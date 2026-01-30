@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Job Tracker</title>
+    <title>DPM Camera Job Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -496,7 +496,7 @@
     <div class="container" style="display: none;" id="app">
         <div class="map-section">
             <div class="header">
-                <h1>Camera Job Tracker</h1>
+                <h1>DPM Camera Job Tracker</h1>
                 <p>Real-time collaborative tracking system</p>
             </div>
             <div class="legend">
@@ -559,13 +559,13 @@
         // IMPORTANT: Replace this with your own Firebase config
         // Instructions at the bottom of the file
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
+        authDomain: "dpmcamera-tracker.firebaseapp.com",
+        databaseURL: "https://dpmcamera-tracker-default-rtdb.firebaseio.com",
+        projectId: "dpmcamera-tracker",
+        storageBucket: "dpmcamera-tracker.firebasestorage.app",
+        messagingSenderId: "109937735873l",
+        appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -624,13 +624,14 @@
             { name: "Paradise QS #05 - Hope", address: "901 W. 3rd St., Hope, AR 71801", lat: 33.6646746, lng: -93.6003814 }
         ];
 
-        // Initialize map
-        const map = L.map('map').setView([33.2, -96.0], 8);
+        // Initialize map - centered on Texas/Arkansas region
+        const map = L.map('map').setView([33.2, -95.5], 7);
         
         // Add satellite imagery base layer
         L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
             attribution: '&copy; Google',
             maxZoom: 20,
+            minZoom: 6,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(map);
         
@@ -640,6 +641,13 @@
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(map);
+        
+        // Set max bounds to keep map focused on Texas/Arkansas area
+        const southWest = L.latLng(32.0, -98.5);
+        const northEast = L.latLng(34.5, -93.5);
+        const bounds = L.latLngBounds(southWest, northEast);
+        map.setMaxBounds(bounds);
+        map.fitBounds(bounds);
 
         const markers = {};
         let jobData = {};
@@ -742,12 +750,19 @@
 
                 const marker = L.marker([location.lat, location.lng], { icon: markerIcon })
                     .addTo(map)
-                    .bindPopup(createPopupContent(location, data), { maxWidth: 350 });
+                    .bindPopup(createPopupContent(location, data), { 
+                        maxWidth: 350,
+                        autoPan: true,
+                        autoPanPadding: [50, 50],
+                        keepInView: true
+                    });
 
                 marker.on('popupopen', function() {
                     // Refresh popup content with latest data
                     const currentData = jobData[locationId] || { status: 'no-issues' };
                     marker.setPopupContent(createPopupContent(location, currentData));
+                    // Pan to center the popup
+                    map.panTo(marker.getLatLng());
                 });
 
                 markers[locationId] = { marker, location };
@@ -867,8 +882,15 @@
                 `;
                 
                 card.onclick = () => {
-                    map.setView([location.lat, location.lng], 13);
-                    markers[locationId].marker.openPopup();
+                    // Pan to location with offset to account for popup
+                    map.setView([location.lat, location.lng], 13, {
+                        animate: true,
+                        duration: 0.5
+                    });
+                    // Small delay to let map pan, then open popup
+                    setTimeout(() => {
+                        markers[locationId].marker.openPopup();
+                    }, 100);
                 };
                 
                 listContainer.appendChild(card);
