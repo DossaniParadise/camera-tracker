@@ -403,6 +403,42 @@
             background: var(--accent-no-issues);
         }
 
+        .notes-history {
+            margin-top: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .history-entry {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-entry:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .history-date {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+
+        .history-text {
+            font-size: 12px;
+            color: var(--text-primary);
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
         @keyframes pulse {
             0%, 100% {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -523,13 +559,13 @@
         // IMPORTANT: Replace this with your own Firebase config
         // Instructions at the bottom of the file
         const firebaseConfig = {
-           	 apiKey: "AIzaSyDnvQgObDjV5ptuklvRc3uTAI_bOok1zBA",
-  		authDomain: "dpmcamera-tracker.firebaseapp.com",
-  		databaseURL: "dpmcamera-tracker-default-rtdb.firebaseio.com",
- 		projectId: "dpmcamera-tracker",
-  		storageBucket: "dpmcamera-tracker.firebasestorage.app",
-  		messagingSenderId: "1099377358731",
-  		appId: "11099377358731web3776dedb97a4fe893de18e"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -590,16 +626,19 @@
 
         // Initialize map
         const map = L.map('map').setView([33.2, -96.0], 8);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-            maxZoom: 19
+        
+        // Add satellite imagery base layer
+        L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            attribution: '&copy; Google',
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(map);
         
-        // Add road labels overlay
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            maxZoom: 19,
-            pane: 'shadowPane'
+        // Add road/labels overlay
+        L.tileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
+            attribution: '&copy; Google',
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(map);
 
         const markers = {};
@@ -623,7 +662,27 @@
         // Create popup content
         function createPopupContent(location, data) {
             const locationId = getLocationId(location);
-            const currentData = data || { status: 'not-started', jobId: '', issue: '', notes: '' };
+            const currentData = data || { status: 'no-issues', jobId: '', issue: '', notes: '', notesHistory: [] };
+            const notesHistory = currentData.notesHistory || [];
+            
+            let historyHtml = '';
+            if (notesHistory.length > 0) {
+                historyHtml = `
+                    <div class="form-group">
+                        <button class="btn btn-secondary" style="width: 100%;" onclick="toggleNotesHistory('${locationId}')">
+                            📋 View Old Notes (${notesHistory.length})
+                        </button>
+                        <div id="history-${locationId}" class="notes-history" style="display: none;">
+                            ${notesHistory.map((entry, index) => `
+                                <div class="history-entry">
+                                    <div class="history-date">${new Date(entry.timestamp).toLocaleString()}</div>
+                                    <div class="history-text">${entry.notes}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
             
             return `
                 <div class="popup-content">
@@ -635,10 +694,10 @@
                     <div class="form-group">
                         <label class="form-label">Status</label>
                         <select class="form-select" id="status-${locationId}">
+                            <option value="no-issues" ${currentData.status === 'no-issues' ? 'selected' : ''}>No Issues</option>
                             <option value="not-started" ${currentData.status === 'not-started' ? 'selected' : ''}>Not Started</option>
                             <option value="in-progress" ${currentData.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
                             <option value="completed" ${currentData.status === 'completed' ? 'selected' : ''}>Completed</option>
-                            <option value="no-issues" ${currentData.status === 'no-issues' ? 'selected' : ''}>No Issues</option>
                         </select>
                     </div>
 
@@ -654,15 +713,17 @@
                                   placeholder="Describe the camera issue...">${currentData.issue || ''}</textarea>
                     </div>
 
+                    ${historyHtml}
+
                     <div class="form-group">
-                        <label class="form-label">Notes / Messages</label>
+                        <label class="form-label">Add New Note</label>
                         <textarea class="form-textarea" id="notes-${locationId}" 
-                                  placeholder="Add notes, tag each other with @name...">${currentData.notes || ''}</textarea>
+                                  placeholder="Add notes, tag each other with @name..."></textarea>
                     </div>
 
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="saveJobData('${locationId}')">Save</button>
-                        <button class="btn btn-secondary" onclick="clearJobData('${locationId}')">Clear</button>
+                        <button class="btn btn-secondary" onclick="clearJobData('${locationId}')">Clear All</button>
                     </div>
                 </div>
             `;
@@ -672,7 +733,7 @@
         function addMarkers() {
             locations.forEach(location => {
                 const locationId = getLocationId(location);
-                const data = jobData[locationId] || { status: 'not-started' };
+                const data = jobData[locationId] || { status: 'no-issues' };
                 
                 const markerIcon = L.divIcon({
                     className: 'custom-marker ' + getMarkerClass(data.status),
@@ -685,7 +746,7 @@
 
                 marker.on('popupopen', function() {
                     // Refresh popup content with latest data
-                    const currentData = jobData[locationId] || { status: 'not-started' };
+                    const currentData = jobData[locationId] || { status: 'no-issues' };
                     marker.setPopupContent(createPopupContent(location, currentData));
                 });
 
@@ -695,7 +756,7 @@
 
         // Update marker appearance
         function updateMarker(locationId) {
-            const data = jobData[locationId] || { status: 'not-started' };
+            const data = jobData[locationId] || { status: 'no-issues' };
             const markerData = markers[locationId];
             
             if (markerData) {
@@ -712,23 +773,46 @@
             const status = document.getElementById(`status-${locationId}`).value;
             const jobId = document.getElementById(`jobid-${locationId}`).value;
             const issue = document.getElementById(`issue-${locationId}`).value;
-            const notes = document.getElementById(`notes-${locationId}`).value;
+            const newNote = document.getElementById(`notes-${locationId}`).value;
+
+            // Get existing data
+            const existingData = jobData[locationId] || { notesHistory: [] };
+            let notesHistory = existingData.notesHistory || [];
+
+            // Add new note to history if not empty
+            if (newNote.trim()) {
+                notesHistory.push({
+                    notes: newNote,
+                    timestamp: new Date().toISOString()
+                });
+            }
 
             const data = {
                 status,
                 jobId,
                 issue,
-                notes,
+                notes: existingData.notes || '', // Keep last note for backwards compatibility
+                notesHistory: notesHistory,
                 lastUpdated: new Date().toISOString()
             };
 
             set(ref(database, 'jobs/' + locationId), data)
                 .then(() => {
                     alert('✓ Saved successfully!');
+                    // Clear the new note field
+                    document.getElementById(`notes-${locationId}`).value = '';
                 })
                 .catch((error) => {
                     alert('Error saving data: ' + error.message);
                 });
+        };
+
+        // Toggle notes history display
+        window.toggleNotesHistory = function(locationId) {
+            const historyDiv = document.getElementById(`history-${locationId}`);
+            if (historyDiv) {
+                historyDiv.style.display = historyDiv.style.display === 'none' ? 'block' : 'none';
+            }
         };
 
         // Clear job data
@@ -754,8 +838,8 @@
                 }
             });
 
-            // Count locations without data as not-started
-            stats['not-started'] += locations.length - Object.keys(jobData).length;
+            // Count locations without data as no-issues (blue - default)
+            stats['no-issues'] += locations.length - Object.keys(jobData).length;
 
             document.getElementById('stat-not-started').textContent = stats['not-started'];
             document.getElementById('stat-in-progress').textContent = stats['in-progress'];
@@ -770,7 +854,7 @@
 
             locations.forEach(location => {
                 const locationId = getLocationId(location);
-                const data = jobData[locationId] || { status: 'not-started' };
+                const data = jobData[locationId] || { status: 'no-issues' };
                 
                 const card = document.createElement('div');
                 card.className = 'location-card';
