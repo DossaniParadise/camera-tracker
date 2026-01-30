@@ -559,13 +559,13 @@
         // IMPORTANT: Replace this with your own Firebase config
         // Instructions at the bottom of the file
         const firebaseConfig = {
-        apiKey: "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
-        authDomain: "dpmcamera-tracker.firebaseapp.com",
-        databaseURL: "https://dpmcamera-tracker-default-rtdb.firebaseio.com",
-        projectId: "dpmcamera-tracker",
-        storageBucket: "dpmcamera-tracker.firebasestorage.app",
-        messagingSenderId: "109937735873l",
-        appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
+apiKey: "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
+authDomain: "dpmcamera-tracker.firebaseapp.com",
+databaseURL: "https://dpmcamera-tracker-default-rtdb.firebaseio.com",
+projectId: "dpmcamera-tracker",
+storageBucket: "dpmcamera-tracker.firebasestorage.app",
+messagingSenderId: "109937735873l",
+appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -670,7 +670,7 @@
         // Create popup content
         function createPopupContent(location, data) {
             const locationId = getLocationId(location);
-            const currentData = data || { status: 'no-issues', jobId: '', issue: '', notes: '', notesHistory: [] };
+            const currentData = data || { status: 'no-issues', visitDate: '', issue: '', notesHistory: [] };
             const notesHistory = currentData.notesHistory || [];
             
             let historyHtml = '';
@@ -710,9 +710,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Job ID</label>
-                        <input type="text" class="form-input" id="jobid-${locationId}" 
-                               value="${currentData.jobId || ''}" placeholder="Enter job ID">
+                        <label class="form-label">Visit Date</label>
+                        <input type="date" class="form-input" id="visitdate-${locationId}" 
+                               value="${currentData.visitDate || ''}" placeholder="Select visit date">
                     </div>
 
                     <div class="form-group">
@@ -786,7 +786,7 @@
         // Save job data to Firebase
         window.saveJobData = function(locationId) {
             const status = document.getElementById(`status-${locationId}`).value;
-            const jobId = document.getElementById(`jobid-${locationId}`).value;
+            const visitDate = document.getElementById(`visitdate-${locationId}`).value;
             const issue = document.getElementById(`issue-${locationId}`).value;
             const newNote = document.getElementById(`notes-${locationId}`).value;
 
@@ -804,9 +804,8 @@
 
             const data = {
                 status,
-                jobId,
+                visitDate,
                 issue,
-                notes: existingData.notes || '', // Keep last note for backwards compatibility
                 notesHistory: notesHistory,
                 lastUpdated: new Date().toISOString()
             };
