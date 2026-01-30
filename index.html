@@ -35,7 +35,7 @@
 
         .container {
             display: grid;
-            grid-template-columns: 1fr 400px;
+            grid-template-columns: 1fr 500px;
             height: 100vh;
             gap: 0;
         }
@@ -179,16 +179,34 @@
         }
 
         .location-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .location-column {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
+        }
+
+        .column-header {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            padding: 8px 0;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 4px;
         }
 
         .location-card {
             background: var(--bg-secondary);
             border: 2px solid var(--border);
             border-radius: 10px;
-            padding: 16px;
+            padding: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -201,22 +219,23 @@
 
         .location-name {
             font-weight: 700;
-            font-size: 14px;
+            font-size: 12px;
             margin-bottom: 4px;
             color: var(--text-primary);
         }
 
         .location-address {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-secondary);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            line-height: 1.3;
         }
 
         .location-status {
             display: inline-block;
-            padding: 4px 12px;
+            padding: 3px 10px;
             border-radius: 6px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -812,9 +831,25 @@ appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
 
             set(ref(database, 'jobs/' + locationId), data)
                 .then(() => {
+                    // Update local data immediately
+                    jobData[locationId] = data;
+                    
+                    // Update marker color
+                    updateMarker(locationId);
+                    
+                    // Update stats
+                    updateStats();
+                    
+                    // Update location list
+                    renderLocationList();
+                    
+                    // Close popup
+                    if (markers[locationId]) {
+                        markers[locationId].marker.closePopup();
+                    }
+                    
+                    // Show success message
                     alert('✓ Saved successfully!');
-                    // Clear the new note field
-                    document.getElementById(`notes-${locationId}`).value = '';
                 })
                 .catch((error) => {
                     alert('Error saving data: ' + error.message);
@@ -866,7 +901,24 @@ appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
             const listContainer = document.getElementById('location-list');
             listContainer.innerHTML = '';
 
+            // Separate locations into two groups
+            const burgerKingSubway = [];
+            const paradiseOthers = [];
+
             locations.forEach(location => {
+                if (location.name.includes('Burger King') || location.name.includes('Subway')) {
+                    burgerKingSubway.push(location);
+                } else {
+                    paradiseOthers.push(location);
+                }
+            });
+
+            // Create column 1: Burger King & Subway
+            const column1 = document.createElement('div');
+            column1.className = 'location-column';
+            column1.innerHTML = '<div class="column-header">Burger King & Subway</div>';
+            
+            burgerKingSubway.forEach(location => {
                 const locationId = getLocationId(location);
                 const data = jobData[locationId] || { status: 'no-issues' };
                 
@@ -881,18 +933,52 @@ appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
                 `;
                 
                 card.onclick = () => {
-                    // Pan to location with offset to account for popup
                     map.setView([location.lat, location.lng], 13, {
                         animate: true,
                         duration: 0.5
                     });
-                    // Small delay to let map pan, then open popup
                     setTimeout(() => {
                         markers[locationId].marker.openPopup();
                     }, 100);
                 };
                 
-                listContainer.appendChild(card);
+                column1.appendChild(card);
+            });
+
+            // Create column 2: Paradise QS & Others
+            const column2 = document.createElement('div');
+            column2.className = 'location-column';
+            column2.innerHTML = '<div class="column-header">Paradise QS & Others</div>';
+            
+            paradiseOthers.forEach(location => {
+                const locationId = getLocationId(location);
+                const data = jobData[locationId] || { status: 'no-issues' };
+                
+                const card = document.createElement('div');
+                card.className = 'location-card';
+                card.innerHTML = `
+                    <div class="location-name">${location.name}</div>
+                    <div class="location-address">${location.address}</div>
+                    <span class="location-status status-${data.status}">
+                        ${data.status.replace('-', ' ')}
+                    </span>
+                `;
+                
+                card.onclick = () => {
+                    map.setView([location.lat, location.lng], 13, {
+                        animate: true,
+                        duration: 0.5
+                    });
+                    setTimeout(() => {
+                        markers[locationId].marker.openPopup();
+                    }, 100);
+                };
+                
+                column2.appendChild(card);
+            });
+
+            listContainer.appendChild(column1);
+            listContainer.appendChild(column2);
             });
         }
 
