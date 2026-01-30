@@ -578,13 +578,13 @@
         // IMPORTANT: Replace this with your own Firebase config
         // Instructions at the bottom of the file
         const firebaseConfig = {
-apiKey: "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
-authDomain: "dpmcamera-tracker.firebaseapp.com",
-databaseURL: "https://dpmcamera-tracker-default-rtdb.firebaseio.com",
-projectId: "dpmcamera-tracker",
-storageBucket: "dpmcamera-tracker.firebasestorage.app",
-messagingSenderId: "109937735873l",
-appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
+            apiKey: "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
+            authDomain: "dpmcamera-tracker.firebaseapp.com",
+            databaseURL: "https://dpmcamera-tracker-default-rtdb.firebaseio.com",
+            projectId: "dpmcamera-tracker",
+            storageBucket: "dpmcamera-tracker.firebasestorage.app",
+            messagingSenderId: "109937735873l",
+            appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -804,56 +804,70 @@ appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
 
         // Save job data to Firebase
         window.saveJobData = function(locationId) {
-            const status = document.getElementById(`status-${locationId}`).value;
-            const visitDate = document.getElementById(`visitdate-${locationId}`).value;
-            const issue = document.getElementById(`issue-${locationId}`).value;
-            const newNote = document.getElementById(`notes-${locationId}`).value;
+            console.log('Save button clicked for:', locationId);
+            
+            try {
+                const status = document.getElementById(`status-${locationId}`).value;
+                const visitDate = document.getElementById(`visitdate-${locationId}`).value;
+                const issue = document.getElementById(`issue-${locationId}`).value;
+                const newNote = document.getElementById(`notes-${locationId}`).value;
+                
+                console.log('Form values:', { status, visitDate, issue, newNote });
 
-            // Get existing data
-            const existingData = jobData[locationId] || { notesHistory: [] };
-            let notesHistory = existingData.notesHistory || [];
+                // Get existing data
+                const existingData = jobData[locationId] || { notesHistory: [] };
+                let notesHistory = existingData.notesHistory || [];
 
-            // Add new note to history if not empty
-            if (newNote.trim()) {
-                notesHistory.push({
-                    notes: newNote,
-                    timestamp: new Date().toISOString()
-                });
+                // Add new note to history if not empty
+                if (newNote && newNote.trim()) {
+                    notesHistory.push({
+                        notes: newNote,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+
+                const data = {
+                    status,
+                    visitDate,
+                    issue,
+                    notesHistory: notesHistory,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                console.log('Saving data:', data);
+
+                set(ref(database, 'jobs/' + locationId), data)
+                    .then(() => {
+                        console.log('Save successful!');
+                        
+                        // Update local data immediately
+                        jobData[locationId] = data;
+                        
+                        // Update marker color
+                        updateMarker(locationId);
+                        
+                        // Update stats
+                        updateStats();
+                        
+                        // Update location list
+                        renderLocationList();
+                        
+                        // Close popup
+                        if (markers[locationId]) {
+                            markers[locationId].marker.closePopup();
+                        }
+                        
+                        // Show success message
+                        alert('✓ Saved successfully!');
+                    })
+                    .catch((error) => {
+                        console.error('Save error:', error);
+                        alert('Error saving data: ' + error.message);
+                    });
+            } catch (error) {
+                console.error('Save function error:', error);
+                alert('Error in save function: ' + error.message);
             }
-
-            const data = {
-                status,
-                visitDate,
-                issue,
-                notesHistory: notesHistory,
-                lastUpdated: new Date().toISOString()
-            };
-
-            set(ref(database, 'jobs/' + locationId), data)
-                .then(() => {
-                    // Update local data immediately
-                    jobData[locationId] = data;
-                    
-                    // Update marker color
-                    updateMarker(locationId);
-                    
-                    // Update stats
-                    updateStats();
-                    
-                    // Update location list
-                    renderLocationList();
-                    
-                    // Close popup
-                    if (markers[locationId]) {
-                        markers[locationId].marker.closePopup();
-                    }
-                    
-                    // Show success message
-                    alert('✓ Saved successfully!');
-                })
-                .catch((error) => {
-                    alert('Error saving data: ' + error.message);
-                });
         };
 
         // Toggle notes history display
