@@ -188,6 +188,27 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            max-height: calc(100vh - 420px);
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .location-column::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .location-column::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 3px;
+        }
+
+        .location-column::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .location-column::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
         }
 
         .column-header {
@@ -930,7 +951,7 @@
             // Create column 1: Burger King & Subway
             const column1 = document.createElement('div');
             column1.className = 'location-column';
-            column1.innerHTML = '<div class="column-header">Burger King & Subway</div>';
+            column1.innerHTML = '<div class="column-header">Fast Food</div>';
             
             burgerKingSubway.forEach(location => {
                 const locationId = getLocationId(location);
@@ -962,7 +983,7 @@
             // Create column 2: Paradise QS & Others
             const column2 = document.createElement('div');
             column2.className = 'location-column';
-            column2.innerHTML = '<div class="column-header">Paradise QS & Others</div>';
+            column2.innerHTML = '<div class="column-header">C-Store</div>';
             
             paradiseOthers.forEach(location => {
                 const locationId = getLocationId(location);
