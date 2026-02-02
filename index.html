@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>DPM Camera Job Tracker</title>
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        *{
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -591,14 +589,46 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Global variables for Google Maps
+        let map;
+        let googleMarkers = {};
+        let markers = {};
+        let jobData = {};
+        let infoWindow;
+        let database;
+
+        // Initialize Google Map
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 32.9413343, lng: -97.0731222 }, // Paradise QS #03
+                zoom: 10,
+                mapTypeId: 'hybrid',
+                gestureHandling: 'greedy',
+                zoomControl: true,
+                mapTypeControl: true,
+                streetViewControl: false,
+                fullscreenControl: false,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.DROPDOWN_MENU
+                }
+            });
+
+            infoWindow = new google.maps.InfoWindow({
+                maxWidth: 350
+            });
+            
+            // Initialize Firebase after map loads
+            initFirebase();
+        }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA&callback=initMap" async defer></script>
     <script type="module">
         // Firebase configuration
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
 
-        // IMPORTANT: Replace this with your own Firebase config
-        // Instructions at the bottom of the file
+        window.initFirebase = function() {
         const firebaseConfig = {
             apiKey: "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
             authDomain: "dpmcamera-tracker.firebaseapp.com",
@@ -610,7 +640,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
+        database = getDatabase(app);
 
         // Location data from PDF
         const locations = [
@@ -664,34 +694,6 @@
             { name: "Paradise QS #10 - Texas Blvd", address: "3300 Texas Blvd, Texarkana, TX 75503", lat: 33.448522, lng: -94.0527795 },
             { name: "Paradise QS #05 - Hope", address: "901 W. 3rd St., Hope, AR 71801", lat: 33.6646746, lng: -93.6003814 }
         ];
-
-        // Initialize map - centered on Texas/Arkansas region
-        const map = L.map('map').setView([33.2, -95.5], 7);
-        
-        // Add satellite imagery base layer
-        L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            attribution: '&copy; Google',
-            maxZoom: 20,
-            minZoom: 6,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-        }).addTo(map);
-        
-        // Add road/labels overlay
-        L.tileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
-            attribution: '&copy; Google',
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
-        }).addTo(map);
-        
-        // Set max bounds to keep map focused on Texas/Arkansas area
-        const southWest = L.latLng(32.0, -98.5);
-        const northEast = L.latLng(34.5, -93.5);
-        const bounds = L.latLngBounds(southWest, northEast);
-        map.setMaxBounds(bounds);
-        map.fitBounds(bounds);
-
-        const markers = {};
-        let jobData = {};
 
         // Create unique ID for location
         function getLocationId(location) {
@@ -784,30 +786,53 @@
                 const locationId = getLocationId(location);
                 const data = jobData[locationId] || { status: 'no-issues' };
                 
-                const markerIcon = L.divIcon({
-                    className: 'custom-marker ' + getMarkerClass(data.status),
-                    iconSize: [24, 24]
+                // Get marker color
+                const getColor = (status) => {
+                    switch(status) {
+                        case 'not-started': return '#ef4444'; // red
+                        case 'in-progress': return '#fbbf24'; // yellow
+                        case 'completed': return '#10b981'; // green
+                        case 'no-issues': return '#3b82f6'; // blue
+                        default: return '#3b82f6';
+                    }
+                };
+
+                const marker = new google.maps.Marker({
+                    position: { lat: location.lat, lng: location.lng },
+                    map: map,
+                    title: location.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: getColor(data.status),
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 2
+                    }
                 });
 
-                const marker = L.marker([location.lat, location.lng], { icon: markerIcon })
-                    .addTo(map)
-                    .bindPopup(createPopupContent(location, data), { 
-                        maxWidth: 350,
-                        autoPan: true,
-                        autoPanPadding: [50, 50],
-                        keepInView: true
-                    });
-
-                marker.on('popupopen', function() {
-                    // Refresh popup content with latest data
-                    const currentData = jobData[locationId] || { status: 'no-issues' };
-                    marker.setPopupContent(createPopupContent(location, currentData));
-                    // Pan to center the popup
-                    map.panTo(marker.getLatLng());
+                marker.addListener('click', () => {
+                    openLocationPopup(locationId);
                 });
 
-                markers[locationId] = { marker, location };
+                googleMarkers[locationId] = marker;
+                markers[locationId] = { marker, location, googleMarker: marker };
             });
+        }
+
+        // Open popup for a location (called from marker or sidebar)
+        function openLocationPopup(locationId) {
+            const markerData = markers[locationId];
+            if (!markerData) return;
+
+            const currentData = jobData[locationId] || { status: 'no-issues' };
+            const content = createPopupContent(markerData.location, currentData);
+            
+            infoWindow.setContent(content);
+            infoWindow.open(map, markerData.googleMarker);
+            
+            // Center map on marker
+            map.panTo(markerData.googleMarker.getPosition());
         }
 
         // Update marker appearance
@@ -815,12 +840,25 @@
             const data = jobData[locationId] || { status: 'no-issues' };
             const markerData = markers[locationId];
             
-            if (markerData) {
-                const markerIcon = L.divIcon({
-                    className: 'custom-marker ' + getMarkerClass(data.status),
-                    iconSize: [24, 24]
+            if (markerData && markerData.googleMarker) {
+                const getColor = (status) => {
+                    switch(status) {
+                        case 'not-started': return '#ef4444';
+                        case 'in-progress': return '#fbbf24';
+                        case 'completed': return '#10b981';
+                        case 'no-issues': return '#3b82f6';
+                        default: return '#3b82f6';
+                    }
+                };
+
+                markerData.googleMarker.setIcon({
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: getColor(data.status),
+                    fillOpacity: 1,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 2
                 });
-                markerData.marker.setIcon(markerIcon);
             }
         }
 
@@ -969,13 +1007,7 @@
                 `;
                 
                 card.onclick = () => {
-                    map.setView([location.lat, location.lng], 13, {
-                        animate: true,
-                        duration: 0.5
-                    });
-                    setTimeout(() => {
-                        markers[locationId].marker.openPopup();
-                    }, 100);
+                    openLocationPopup(locationId);
                 };
                 
                 column1.appendChild(card);
@@ -1024,13 +1056,7 @@
                 `;
                 
                 card.onclick = () => {
-                    map.setView([location.lat, location.lng], 13, {
-                        animate: true,
-                        duration: 0.5
-                    });
-                    setTimeout(() => {
-                        markers[locationId].marker.openPopup();
-                    }, 100);
+                    openLocationPopup(locationId);
                 };
                 
                 column2.appendChild(card);
@@ -1083,8 +1109,8 @@
             }
         }
 
-        // Start the app
-        initApp();
+        // Close the initFirebase function
+        };
     </script>
 </body>
 </html>
