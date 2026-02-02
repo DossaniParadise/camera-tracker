@@ -10,14 +10,14 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --bg: #0a0e27;
-            --bg2: #151b3d;
-            --red: #ef4444;
-            --yellow: #fbbf24;
-            --green: #10b981;
-            --blue: #3b82f6;
-            --text: #e2e8f0;
-            --text2: #94a3b8;
-            --border: #1e293b;
+            --bg2: #1a2140;
+            --red: #ff6b6b;
+            --yellow: #ffd93d;
+            --green: #6bcf7f;
+            --blue: #74b9ff;
+            --text: #ffffff;
+            --text2: #cbd5e1;
+            --border: #2d3a5f;
         }
         body { font-family: 'Space Mono', monospace; background: var(--bg); color: var(--text); }
         
@@ -45,9 +45,9 @@
         
         .card { background: var(--bg2); border: 2px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; }
         .card:hover { border-color: var(--blue); transform: translateY(-1px); }
-        .card-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-        .card-addr { font-size: 10px; color: var(--text2); margin-bottom: 6px; }
-        .card-status { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .card-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
+        .card-addr { font-size: 12px; color: var(--text2); margin-bottom: 8px; line-height: 1.4; }
+        .card-status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .status-red { background: rgba(239, 68, 68, 0.2); color: var(--red); border: 1px solid var(--red); }
         .status-yellow { background: rgba(251, 191, 36, 0.2); color: var(--yellow); border: 1px solid var(--yellow); }
         .status-green { background: rgba(16, 185, 129, 0.2); color: var(--green); border: 1px solid var(--green); }
@@ -56,26 +56,26 @@
         .leaflet-popup-content-wrapper { background: var(--bg); color: var(--text); border: 2px solid var(--border); border-radius: 12px; font-family: 'Space Mono', monospace; }
         .leaflet-popup-content { margin: 0; width: 320px !important; }
         .popup { padding: 16px; }
-        .popup-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-        .popup-addr { font-size: 10px; color: var(--text2); margin-bottom: 12px; cursor: pointer; text-decoration: underline; }
+        .popup-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
+        .popup-addr { font-size: 13px; color: var(--text2); margin-bottom: 12px; cursor: pointer; text-decoration: underline; line-height: 1.4; }
         .popup-addr:hover { color: var(--blue); }
         
         .mobile-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
         .mobile-modal.active { display: flex; }
         .modal-content { background: var(--bg); border: 2px solid var(--border); border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
         .modal-close { position: sticky; top: 0; background: var(--bg); padding: 12px; border-bottom: 2px solid var(--border); text-align: right; }
-        .modal-close button { background: var(--bg2); color: var(--text); border: 2px solid var(--border); padding: 8px 16px; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .modal-close button { background: var(--bg2); color: var(--text); border: 2px solid var(--border); padding: 10px 18px; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; cursor: pointer; }
         
         .form-group { margin-bottom: 12px; }
-        .form-label { font-size: 10px; font-weight: 700; color: var(--text2); margin-bottom: 4px; display: block; }
-        .form-input, .form-select, .form-textarea { width: 100%; background: var(--bg2); border: 2px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px; }
+        .form-label { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 4px; display: block; }
+        .form-input, .form-select, .form-textarea { width: 100%; background: var(--bg2); border: 2px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 14px; }
         .form-textarea { min-height: 60px; resize: vertical; }
         
         .notes { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-bottom: 12px; max-height: 150px; overflow-y: auto; }
         .note { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
         .note:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
-        .note-date { font-size: 9px; color: var(--text2); margin-bottom: 2px; }
-        .note-text { font-size: 11px; }
+        .note-date { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
+        .note-text { font-size: 13px; line-height: 1.4; }
         
         .btn-group { display: flex; gap: 8px; }
         .btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
@@ -165,7 +165,7 @@
             {n:"Burger King Saginaw 27084",a:"6960 N Blue Mound Road, Fort Worth, TX 76131",t:32.8681978,g:-97.341787},
             {n:"Burger King Sunnyvale 28683",a:"480 US Hwy 80, Sunnyvale, TX 75182",t:32.7832645,g:-96.5601677},
             {n:"Burger King Terrell 25198",a:"1204 W. Moore Avenue, Terrell, TX 75160",t:32.739396,g:-96.2920632},
-            {n:"Burger King The Colony 9723",a:"3700 Main St, The Colony, TX 75056",t:33.0674516,g:-96.8893989},
+            {n:"Burger King Colony 9723",a:"3700 Main St, The Colony, TX 75056",t:33.0674516,g:-96.8893989},
             {n:"Subway Texarkana 22411",a:"4103 W, 7th St., Texarkana, TX 75503",t:33.4190104,g:-94.0941756},
             {n:"Paradise QS #01 - Sun Valley",a:"5401 Sun Valley Dr., Fort Worth, TX 76119",t:32.6795074,g:-97.2398344},
             {n:"Paradise QS #02 - Lewsville",a:"521 E. Hwy 121, Lewisville, TX 75057",t:32.9906715,g:-96.9780407},
@@ -312,6 +312,17 @@
             locs.forEach(l => {
                 if(l.n.includes('Burger King') || l.n.includes('Subway')) ff.push(l);
                 else cs.push(l);
+            });
+            
+            // Sort Fast Food alphabetically by city name (strip prefixes)
+            ff.sort((a, b) => {
+                const cleanName = n => {
+                    let name = n.replace('Burger King ', '').replace('Subway ', '');
+                    // Handle "The Colony" -> "Colony"
+                    if(name.startsWith('The ')) name = name.substring(4);
+                    return name;
+                };
+                return cleanName(a.n).localeCompare(cleanName(b.n));
             });
             
             cs.sort((a,b) => {
