@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DPM Camera Job Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -443,135 +443,40 @@
             background: var(--accent-no-issues);
         }
 
-        /* Speech Bubble Notes - PDF Comment Style */
-        .notes-container {
-            margin: 16px 0;
-            max-height: 350px;
+        .notes-history {
+            margin-top: 12px;
+            max-height: 200px;
             overflow-y: auto;
-            padding: 8px;
-        }
-
-        .notes-container::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .notes-container::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 3px;
-        }
-
-        .speech-bubble {
-            position: relative;
             background: var(--bg-secondary);
-            border: 2px solid #3b82f6;
-            border-radius: 12px;
-            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .history-entry {
             margin-bottom: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .speech-bubble::before {
-            content: '';
-            position: absolute;
-            left: 20px;
-            top: -8px;
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 8px solid #3b82f6;
-        }
-
-        .speech-bubble::after {
-            content: '';
-            position: absolute;
-            left: 21px;
-            top: -5px;
-            width: 0;
-            height: 0;
-            border-left: 7px solid transparent;
-            border-right: 7px solid transparent;
-            border-bottom: 7px solid var(--bg-secondary);
-        }
-
-        .bubble-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            padding-bottom: 6px;
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--border);
         }
 
-        .bubble-date {
+        .history-entry:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .history-date {
             font-size: 10px;
             color: var(--text-secondary);
+            margin-bottom: 4px;
             font-weight: 700;
         }
 
-        .bubble-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .bubble-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
+        .history-text {
             font-size: 12px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            transition: all 0.2s;
-        }
-
-        .bubble-btn:hover {
-            background: var(--bg-primary);
-            color: #3b82f6;
-        }
-
-        .bubble-text {
-            font-size: 13px;
             color: var(--text-primary);
             line-height: 1.5;
             white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .bubble-edit-area {
-            width: 100%;
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 8px;
-            color: var(--text-primary);
-            font-family: 'Space Mono', monospace;
-            font-size: 13px;
-            resize: vertical;
-            min-height: 60px;
-        }
-
-        .empty-notes {
-            text-align: center;
-            padding: 20px;
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-style: italic;
-        }
-
-        .notes-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .notes-count {
-            font-size: 11px;
-            color: var(--text-secondary);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         @keyframes pulse {
@@ -583,133 +488,19 @@
             }
         }
 
-        @media (max-width: 1023px) {
-            /* Mobile Portrait: List view only (no map) */
-            @media (orientation: portrait) {
-                .container {
-                    display: block;
-                    height: 100vh;
-                }
-
-                .map-section {
-                    display: none !important;
-                }
-
-                .sidebar {
-                    width: 100%;
-                    height: 100vh;
-                    max-height: 100vh;
-                    padding: 20px;
-                    overflow-y: auto;
-                }
-
-                /* Keep 2 columns for list */
-                .location-list {
-                    grid-template-columns: 1fr 1fr !important;
-                }
-
-                .location-column {
-                    max-height: none !important;
-                    overflow-y: visible !important;
-                }
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 60vh 1fr;
             }
 
-            /* Mobile Landscape: Map view only (no list) */
-            @media (orientation: landscape) {
-                .container {
-                    display: block;
-                    height: 100vh;
-                }
-
-                .map-section {
-                    width: 100%;
-                    height: 100vh;
-                }
-
-                .sidebar {
-                    display: none !important;
-                }
-
-                /* Make map controls bigger for landscape */
-                .leaflet-control-zoom a {
-                    width: 50px !important;
-                    height: 50px !important;
-                    line-height: 50px !important;
-                    font-size: 28px !important;
-                }
+            .map-section {
+                border-right: none;
+                border-bottom: 2px solid var(--border);
             }
 
-            /* Common mobile styles */
-            /* Larger text for mobile */
-            .location-name {
-                font-size: 15px !important;
-            }
-
-            .location-address {
-                font-size: 12px !important;
-                line-height: 1.4;
-            }
-
-            .location-status {
-                font-size: 12px !important;
-                padding: 5px 12px !important;
-            }
-
-            /* Larger touch targets */
-            .location-card {
-                padding: 14px !important;
-                margin-bottom: 4px;
-            }
-
-            /* Bigger buttons */
-            .btn {
-                padding: 16px !important;
-                font-size: 16px !important;
-                min-height: 50px;
-            }
-
-            /* Larger form fields */
-            .form-input,
-            .form-select,
-            .form-textarea {
-                font-size: 16px !important;
-                padding: 14px !important;
-                min-height: 50px;
-            }
-
-            .form-label {
-                font-size: 14px !important;
-            }
-
-            /* Bigger stats */
-            .stat-number {
-                font-size: 32px !important;
-            }
-
-            .stat-label {
-                font-size: 11px !important;
-            }
-
-            .column-header {
-                font-size: 14px !important;
-                padding: 10px 0 !important;
-            }
-
-            /* Popup adjustments */
-            .popup-title {
-                font-size: 18px !important;
-            }
-
-            .popup-address {
-                font-size: 13px !important;
-            }
-
-            .sidebar-header h2 {
-                font-size: 20px !important;
-            }
-
-            .sidebar-header p {
-                font-size: 13px !important;
+            .sidebar {
+                max-height: 40vh;
             }
         }
 
@@ -873,11 +664,8 @@
             { name: "Paradise QS #05 - Hope", address: "901 W. 3rd St., Hope, AR 71801", lat: 33.6646746, lng: -93.6003814 }
         ];
 
-        // ============================================
-        // MAP INITIALIZATION
-        // ============================================
-        // Initialize map - centered on Paradise QS #03 - Grapevine
-        const map = L.map('map').setView([32.9413343, -97.0731222], 10);
+        // Initialize map - centered on Texas/Arkansas region
+        const map = L.map('map').setView([33.2, -95.5], 7);
         
         // Add satellite imagery base layer
         L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -894,27 +682,22 @@
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(map);
         
-        // ============================================
-        // DATA STORAGE
-        // ============================================
+        // Set max bounds to keep map focused on Texas/Arkansas area
+        const southWest = L.latLng(32.0, -98.5);
+        const northEast = L.latLng(34.5, -93.5);
+        const bounds = L.latLngBounds(southWest, northEast);
+        map.setMaxBounds(bounds);
+        map.fitBounds(bounds);
 
         const markers = {};
         let jobData = {};
 
-        // ============================================
-        // HELPER FUNCTIONS
-        // ============================================
-        
-        // Create unique ID for location based on coordinates
+        // Create unique ID for location
         function getLocationId(location) {
             return `${location.lat}_${location.lng}`;
         }
 
-        // ============================================
-        // MARKER STYLING
-        // ============================================
-        
-        // Get marker color class based on job status
+        // Get marker color based on status
         function getMarkerClass(status) {
             switch(status) {
                 case 'in-progress': return 'marker-in-progress';
@@ -924,52 +707,28 @@
             }
         }
 
-        // ============================================
-        // POPUP CONTENT GENERATION
-        // ============================================
-        
-        // Create popup content with form fields
+        // Create popup content
         function createPopupContent(location, data) {
             const locationId = getLocationId(location);
             const currentData = data || { status: 'no-issues', visitDate: '', issue: '', notesHistory: [] };
             const notesHistory = currentData.notesHistory || [];
             
-            // Build speech bubbles for existing notes
-            let notesHtml = '';
+            let historyHtml = '';
             if (notesHistory.length > 0) {
-                notesHtml = `
-                    <div class="notes-header">
-                        <span class="notes-count">💬 ${notesHistory.length} Comment${notesHistory.length > 1 ? 's' : ''}</span>
-                    </div>
-                    <div class="notes-container" id="notes-container-${locationId}">
-                        ${notesHistory.map((entry, index) => {
-                            const noteId = `note-${locationId}-${index}`;
-                            const isEditing = false;
-                            return `
-                                <div class="speech-bubble" id="${noteId}">
-                                    <div class="bubble-header">
-                                        <span class="bubble-date">${new Date(entry.timestamp).toLocaleString()}</span>
-                                        <div class="bubble-actions">
-                                            <button class="bubble-btn" onclick="editNote('${locationId}', ${index})">✏️ Edit</button>
-                                            <button class="bubble-btn" onclick="deleteNote('${locationId}', ${index})">🗑️ Delete</button>
-                                        </div>
-                                    </div>
-                                    <div class="bubble-text" id="${noteId}-text">${entry.notes}</div>
-                                    <div id="${noteId}-edit" style="display: none;">
-                                        <textarea class="bubble-edit-area" id="${noteId}-textarea">${entry.notes}</textarea>
-                                        <div class="button-group" style="margin-top: 8px;">
-                                            <button class="btn btn-primary" style="padding: 8px;" onclick="saveEditNote('${locationId}', ${index})">Save</button>
-                                            <button class="btn btn-secondary" style="padding: 8px;" onclick="cancelEditNote('${locationId}', ${index})">Cancel</button>
-                                        </div>
-                                    </div>
+                historyHtml = `
+                    <div class="form-group">
+                        <button class="btn btn-secondary" style="width: 100%;" onclick="toggleNotesHistory('${locationId}')">
+                            📋 View Old Notes (${notesHistory.length})
+                        </button>
+                        <div id="history-${locationId}" class="notes-history" style="display: none;">
+                            ${notesHistory.map((entry, index) => `
+                                <div class="history-entry">
+                                    <div class="history-date">${new Date(entry.timestamp).toLocaleString()}</div>
+                                    <div class="history-text">${entry.notes}</div>
                                 </div>
-                            `;
-                        }).join('')}
+                            `).join('')}
+                        </div>
                     </div>
-                `;
-            } else {
-                notesHtml = `
-                    <div class="empty-notes">No comments yet. Add one below!</div>
                 `;
             }
             
@@ -993,7 +752,7 @@
                     <div class="form-group">
                         <label class="form-label">Visit Date</label>
                         <input type="date" class="form-input" id="visitdate-${locationId}" 
-                               value="${currentData.visitDate || ''}">
+                               value="${currentData.visitDate || ''}" placeholder="Select visit date">
                     </div>
 
                     <div class="form-group">
@@ -1002,30 +761,23 @@
                                   placeholder="Describe the camera issue...">${currentData.issue || ''}</textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">💬 Comments</label>
-                        ${notesHtml}
-                    </div>
+                    ${historyHtml}
 
                     <div class="form-group">
-                        <label class="form-label">Add New Comment</label>
+                        <label class="form-label">Add New Note</label>
                         <textarea class="form-textarea" id="notes-${locationId}" 
-                                  placeholder="Type your comment here..."></textarea>
+                                  placeholder="Add notes, tag each other with @name..."></textarea>
                     </div>
 
                     <div class="button-group">
-                        <button class="btn btn-primary" onclick="saveJobData('${locationId}')">💾 Save</button>
-                        <button class="btn btn-secondary" onclick="clearJobData('${locationId}')">🗑️ Clear All</button>
+                        <button class="btn btn-primary" onclick="saveJobData('${locationId}')">Save</button>
+                        <button class="btn btn-secondary" onclick="clearJobData('${locationId}')">Clear All</button>
                     </div>
                 </div>
             `;
         }
 
-        // ============================================
-        // MARKER MANAGEMENT
-        // ============================================
-        
-        // Add all location markers to the map
+        // Add markers to map
         function addMarkers() {
             locations.forEach(location => {
                 const locationId = getLocationId(location);
@@ -1139,101 +891,7 @@
             }
         };
 
-        // Edit note - show textarea
-        window.editNote = function(locationId, noteIndex) {
-            const noteId = `note-${locationId}-${noteIndex}`;
-            document.getElementById(`${noteId}-text`).style.display = 'none';
-            document.getElementById(`${noteId}-edit`).style.display = 'block';
-        };
-
-        // Cancel edit - hide textarea
-        window.cancelEditNote = function(locationId, noteIndex) {
-            const noteId = `note-${locationId}-${noteIndex}`;
-            document.getElementById(`${noteId}-text`).style.display = 'block';
-            document.getElementById(`${noteId}-edit`).style.display = 'none';
-        };
-
-        // Save edited note
-        window.saveEditNote = function(locationId, noteIndex) {
-            const noteId = `note-${locationId}-${noteIndex}`;
-            const newText = document.getElementById(`${noteId}-textarea`).value.trim();
-            
-            if (!newText) {
-                alert('❌ Note cannot be empty!');
-                return;
-            }
-
-            // Get existing data
-            const existingData = jobData[locationId] || { notesHistory: [] };
-            let notesHistory = existingData.notesHistory || [];
-
-            // Update the specific note
-            if (notesHistory[noteIndex]) {
-                notesHistory[noteIndex].notes = newText;
-                notesHistory[noteIndex].edited = true;
-                notesHistory[noteIndex].lastEdited = new Date().toISOString();
-
-                // Save to Firebase
-                const data = {
-                    ...existingData,
-                    notesHistory: notesHistory,
-                    lastUpdated: new Date().toISOString()
-                };
-
-                set(ref(database, 'jobs/' + locationId), data)
-                    .then(() => {
-                        jobData[locationId] = data;
-                        // Refresh popup
-                        const markerData = markers[locationId];
-                        if (markerData) {
-                            markerData.marker.setPopupContent(createPopupContent(markerData.location, data));
-                            markerData.marker.openPopup();
-                        }
-                        alert('✓ Comment updated!');
-                    })
-                    .catch((error) => {
-                        alert('❌ Error updating: ' + error.message);
-                    });
-            }
-        };
-
-        // Delete note
-        window.deleteNote = function(locationId, noteIndex) {
-            if (!confirm('🗑️ Delete this comment?')) {
-                return;
-            }
-
-            // Get existing data
-            const existingData = jobData[locationId] || { notesHistory: [] };
-            let notesHistory = existingData.notesHistory || [];
-
-            // Remove the note
-            notesHistory.splice(noteIndex, 1);
-
-            // Save to Firebase
-            const data = {
-                ...existingData,
-                notesHistory: notesHistory,
-                lastUpdated: new Date().toISOString()
-            };
-
-            set(ref(database, 'jobs/' + locationId), data)
-                .then(() => {
-                    jobData[locationId] = data;
-                    // Refresh popup
-                    const markerData = markers[locationId];
-                    if (markerData) {
-                        markerData.marker.setPopupContent(createPopupContent(markerData.location, data));
-                        markerData.marker.openPopup();
-                    }
-                    alert('✓ Comment deleted!');
-                })
-                .catch((error) => {
-                    alert('❌ Error deleting: ' + error.message);
-                });
-        };
-
-        // Toggle notes history display (keeping for compatibility)
+        // Toggle notes history display
         window.toggleNotesHistory = function(locationId) {
             const historyDiv = document.getElementById(`history-${locationId}`);
             if (historyDiv) {
@@ -1322,36 +980,10 @@
                 column1.appendChild(card);
             });
 
-            // Create column 2: Paradise QS & Others (sorted)
+            // Create column 2: Paradise QS & Others
             const column2 = document.createElement('div');
             column2.className = 'location-column';
             column2.innerHTML = '<div class="column-header">C-Store</div>';
-            
-            // Sort C-Store locations: PQS #01 first, then by number, car wash/7-11 last
-            paradiseOthers.sort((a, b) => {
-                // Extract PQS number if it exists
-                const getPQSNumber = (name) => {
-                    const match = name.match(/Paradise QS #(\d+)/);
-                    return match ? parseInt(match[1]) : null;
-                };
-                
-                const aNum = getPQSNumber(a.name);
-                const bNum = getPQSNumber(b.name);
-                
-                // Both are PQS - sort by number
-                if (aNum !== null && bNum !== null) {
-                    return aNum - bNum;
-                }
-                
-                // a is PQS, b is not - a comes first
-                if (aNum !== null) return -1;
-                
-                // b is PQS, a is not - b comes first
-                if (bNum !== null) return 1;
-                
-                // Neither is PQS - car wash and 7-Eleven at end, alphabetically
-                return a.name.localeCompare(b.name);
-            });
             
             paradiseOthers.forEach(location => {
                 const locationId = getLocationId(location);
@@ -1384,6 +1016,144 @@
             listContainer.appendChild(column2);
         }
 
-</script>
+        // Listen for real-time updates from Firebase
+        function setupRealtimeListener() {
+            const jobsRef = ref(database, 'jobs');
+            onValue(jobsRef, (snapshot) => {
+                jobData = snapshot.val() || {};
+                
+                // Update all markers
+                Object.keys(markers).forEach(locationId => {
+                    updateMarker(locationId);
+                });
+                
+                updateStats();
+                renderLocationList();
+            });
+        }
+
+        // Initialize app
+        async function initApp() {
+            try {
+                // Load initial data
+                const snapshot = await get(ref(database, 'jobs'));
+                jobData = snapshot.val() || {};
+                
+                // Add markers and setup UI
+                addMarkers();
+                updateStats();
+                renderLocationList();
+                setupRealtimeListener();
+                
+                // Hide loading, show app
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').style.display = 'grid';
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: #ef4444;">
+                        <p style="font-weight: 700; margin-bottom: 8px;">⚠️ Error connecting to Firebase</p>
+                        <p style="font-size: 12px; color: var(--text-secondary);">Make sure you've set up your Firebase config (see instructions at the end of this file)</p>
+                    </div>
+                `;
+                console.error('Firebase error:', error);
+            }
+        }
+
+        // Start the app
+        initApp();
+    </script>
 </body>
 </html>
+
+<!--
+===============================================================================
+SETUP INSTRUCTIONS - READ THIS CAREFULLY
+===============================================================================
+
+This file needs Firebase to work. Firebase is 100% free for your use case.
+Here's how to set it up (takes about 5 minutes):
+
+STEP 1: CREATE A FIREBASE PROJECT
+----------------------------------
+1. Go to https://console.firebase.google.com/
+2. Click "Add project" or "Create a project"
+3. Name it something like "camera-job-tracker"
+4. Disable Google Analytics (you don't need it)
+5. Click "Create project"
+
+STEP 2: SET UP REALTIME DATABASE
+---------------------------------
+1. In your Firebase project, click "Realtime Database" in the left sidebar
+2. Click "Create Database"
+3. Choose a location (us-central1 is fine)
+4. Start in TEST MODE (we'll secure it in a moment)
+5. Click "Enable"
+
+STEP 3: SET SECURITY RULES
+---------------------------
+1. In the Realtime Database page, click the "Rules" tab
+2. Replace the rules with this:
+
+{
+  "rules": {
+    "jobs": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+
+3. Click "Publish"
+
+NOTE: These rules allow anyone with the URL to read/write. For better security,
+you could add a simple password check or restrict to specific domains later.
+
+STEP 4: GET YOUR CONFIG
+------------------------
+1. Click the gear icon next to "Project Overview" in the left sidebar
+2. Click "Project settings"
+3. Scroll down to "Your apps" section
+4. Click the "</>" (web) icon to add a web app
+5. Name it "camera-tracker" and click "Register app"
+6. Copy the firebaseConfig object that appears
+
+STEP 5: UPDATE THIS FILE
+-------------------------
+1. Find the firebaseConfig section in this HTML file (around line 562)
+2. Replace the placeholder values with your actual Firebase config:
+
+const firebaseConfig = {
+    apiKey: "AIza...",  // Your actual API key
+    authDomain: "your-project.firebaseapp.com",
+    databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+    projectId: "your-project-id",
+    storageBucket: "your-project.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abc123"
+};
+
+STEP 6: HOST ON GITHUB PAGES
+-----------------------------
+1. Create a new GitHub repository
+2. Upload this HTML file (you can name it index.html)
+3. Go to repository Settings → Pages
+4. Under "Source", select "main" branch
+5. Click Save
+6. Your site will be live at: https://YOUR-USERNAME.github.io/REPO-NAME/
+
+That's it! Both you and your technician can now access the same URL and see
+real-time updates as you both make changes.
+
+TIPS:
+- Bookmark the GitHub Pages URL on both your devices
+- You can edit the file anytime by updating the HTML in your repo
+- All data saves automatically - no "save" button needed on the map
+- Changes appear instantly for both users
+
+TROUBLESHOOTING:
+- If you see "Error connecting to Firebase", check your config values
+- If markers don't save, check your Firebase Database rules
+- If the map doesn't load, check your internet connection
+
+Need help? The error messages will guide you to what's wrong!
+-->`
