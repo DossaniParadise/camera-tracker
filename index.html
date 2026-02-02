@@ -22,7 +22,8 @@
         body { font-family: 'Space Mono', monospace; background: var(--bg); color: var(--text); }
         
         .container { display: grid; grid-template-columns: 1fr 500px; height: 100vh; }
-        #map { width: 100%; height: 100%; }
+        .map-section { position: relative; }
+        #map { width: 100%; height: 100%; filter: brightness(0.7); }
         
         .sidebar { background: var(--bg); overflow-y: auto; padding: 20px; }
         .sidebar h2 { font-size: 18px; margin-bottom: 20px; }
@@ -185,7 +186,7 @@
                 <div class="popup-addr">${l.a}</div>
                 <div class="form-group">
                     <label class="form-label">Status</label>
-                    <select class="form-select" id="s-${i}">
+                    <select class="form-select" id="s-${i}" onchange="window.previewStatus('${i}')">
                         <option value="blue" ${d.s==='blue'?'selected':''}>No Issues</option>
                         <option value="red" ${d.s==='red'?'selected':''}>Not Started</option>
                         <option value="yellow" ${d.s==='yellow'?'selected':''}>In Progress</option>
@@ -234,6 +235,13 @@
                 markers[i].m.setStyle({fillColor: color(d.s)});
             }
         }
+
+        window.previewStatus = function(i) {
+            const newStatus = document.getElementById(`s-${i}`).value;
+            if(markers[i]) {
+                markers[i].m.setStyle({fillColor: color(newStatus)});
+            }
+        };
 
         function updateStats() {
             const stats = {red:0, yellow:0, green:0, blue:0};
@@ -287,29 +295,46 @@
             list.appendChild(c2);
         }
 
-        window.save = (i) => {
-            const notes = data[i]?.notes || [];
-            const newNote = document.getElementById(`n-${i}`).value.trim();
-            if(newNote) notes.push({n: newNote, t: new Date().toISOString()});
-            
-            const saveData = {
-                s: document.getElementById(`s-${i}`).value,
-                v: document.getElementById(`v-${i}`).value,
-                issue: document.getElementById(`i-${i}`).value,
-                notes: notes
-            };
-            
-            set(ref(db, 'jobs/' + i), saveData).then(() => {
-                data[i] = saveData;
-                updateMarker(i);
-                updateStats();
-                renderList();
-                markers[i].m.closePopup();
-                alert('✓ Saved!');
-            });
+        window.save = function(i) {
+            console.log('Save clicked for:', i);
+            try {
+                const notes = data[i]?.notes || [];
+                const newNote = document.getElementById(`n-${i}`).value.trim();
+                if(newNote) {
+                    notes.push({n: newNote, t: new Date().toISOString()});
+                    console.log('Added note:', newNote);
+                }
+                
+                const saveData = {
+                    s: document.getElementById(`s-${i}`).value,
+                    v: document.getElementById(`v-${i}`).value,
+                    issue: document.getElementById(`i-${i}`).value,
+                    notes: notes
+                };
+                
+                console.log('Saving data:', saveData);
+                
+                set(ref(db, 'jobs/' + i), saveData)
+                    .then(() => {
+                        console.log('Save successful!');
+                        data[i] = saveData;
+                        updateMarker(i);
+                        updateStats();
+                        renderList();
+                        markers[i].m.closePopup();
+                        alert('✓ Saved!');
+                    })
+                    .catch(err => {
+                        console.error('Save error:', err);
+                        alert('Error saving: ' + err.message);
+                    });
+            } catch(err) {
+                console.error('Save function error:', err);
+                alert('Error: ' + err.message);
+            }
         };
 
-        window.clear = (i) => {
+        window.clear = function(i) {
             if(confirm('Clear all data?')) {
                 set(ref(db, 'jobs/' + i), null).then(() => {
                     delete data[i];
@@ -317,6 +342,9 @@
                     updateStats();
                     renderList();
                     markers[i].m.setPopupContent(popup(markers[i].l));
+                    alert('✓ Cleared!');
+                }).catch(err => {
+                    alert('Error: ' + err.message);
                 });
             }
         };
