@@ -894,12 +894,6 @@
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
         }).addTo(map);
         
-        // Set max bounds to keep map focused on Texas/Arkansas area
-        const southWest = L.latLng(32.0, -98.5);
-        const northEast = L.latLng(34.5, -93.0);
-        const bounds = L.latLngBounds(southWest, northEast);
-        map.setMaxBounds(bounds);
-        
         // ============================================
         // DATA STORAGE
         // ============================================
