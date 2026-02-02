@@ -876,8 +876,8 @@
         // ============================================
         // MAP INITIALIZATION
         // ============================================
-        // Initialize map - centered on Texas/Arkansas region
-        const map = L.map('map').setView([33.2, -95.5], 7);
+        // Initialize map - centered on Paradise QS #03 - Grapevine
+        const map = L.map('map').setView([32.9413343, -97.0731222], 10);
         
         // Add satellite imagery base layer
         L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -1328,10 +1328,36 @@
                 column1.appendChild(card);
             });
 
-            // Create column 2: Paradise QS & Others
+            // Create column 2: Paradise QS & Others (sorted)
             const column2 = document.createElement('div');
             column2.className = 'location-column';
             column2.innerHTML = '<div class="column-header">C-Store</div>';
+            
+            // Sort C-Store locations: PQS #01 first, then by number, car wash/7-11 last
+            paradiseOthers.sort((a, b) => {
+                // Extract PQS number if it exists
+                const getPQSNumber = (name) => {
+                    const match = name.match(/Paradise QS #(\d+)/);
+                    return match ? parseInt(match[1]) : null;
+                };
+                
+                const aNum = getPQSNumber(a.name);
+                const bNum = getPQSNumber(b.name);
+                
+                // Both are PQS - sort by number
+                if (aNum !== null && bNum !== null) {
+                    return aNum - bNum;
+                }
+                
+                // a is PQS, b is not - a comes first
+                if (aNum !== null) return -1;
+                
+                // b is PQS, a is not - b comes first
+                if (bNum !== null) return 1;
+                
+                // Neither is PQS - car wash and 7-Eleven at end, alphabetically
+                return a.name.localeCompare(b.name);
+            });
             
             paradiseOthers.forEach(location => {
                 const locationId = getLocationId(location);
