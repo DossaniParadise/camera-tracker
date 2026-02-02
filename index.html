@@ -66,8 +66,6 @@
         .modal-close { position: sticky; top: 0; background: var(--bg); padding: 12px; border-bottom: 2px solid var(--border); text-align: right; }
         .modal-close button { background: var(--bg2); color: var(--text); border: 2px solid var(--border); padding: 8px 16px; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; cursor: pointer; }
         
-        .scroll-top { display: none; }
-        
         .form-group { margin-bottom: 12px; }
         .form-label { font-size: 10px; font-weight: 700; color: var(--text2); margin-bottom: 4px; display: block; }
         .form-input, .form-select, .form-textarea { width: 100%; background: var(--bg2); border: 2px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px; }
@@ -89,9 +87,6 @@
             .map-section { display: none; }
             .sidebar { width: 100%; height: 100vh; max-height: 100vh; position: relative; }
             .location-column { max-height: none; overflow-y: visible; }
-            
-            .scroll-top { display: block; position: fixed; bottom: 20px; right: 20px; background: var(--blue); color: white; width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(59,130,246,0.5); z-index: 9999; transition: all 0.3s; }
-            .scroll-top:active { transform: scale(0.95); }
         }
         
         @media (max-width: 1023px) and (orientation: landscape) {
@@ -124,8 +119,6 @@
             <div id="modal-body"></div>
         </div>
     </div>
-
-    <button class="scroll-top" onclick="window.scrollToTop()">↑</button>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script type="module">
@@ -179,16 +172,16 @@
             {n:"Burger King #2390 Paris",a:"3590 Lamar, Paris, TX 75460",t:33.660776,g:-95.5103595},
             {n:"Paradise QS #16 - MT Pleasant",a:"2011 North Jefferson Ave., Mt. Pleasant, TX 75455",t:33.1772915,g:-94.9708888},
             {n:"Paradise QS #15 - Pittsburg",a:"635 Mt Pleasant Street, Pittsburg, TX 75686",t:33.0094559,g:-94.9644747},
-            {n:"Burger King #24008 New Boston",a:"900 N. McCoy Blvd., New Boston, TX 75570",t:33.4760206,g:-94.4088946},
-            {n:"Paradise QS #11 - New Boston City",a:"900 N. McCoy Blvd., New Boston, TX 75570",t:33.4760406,g:-94.4089146},
-            {n:"Burger King #26015 Hooks",a:"580 Lone Star Dr., Hooks, TX 75561",t:33.4671733,g:-94.2366504},
-            {n:"Paradise QS #13 - Hooks",a:"580 Lone Star Dr., Hooks, TX 75561",t:33.4671933,g:-94.2366704},
+            {n:"Burger King #24008 New Boston",a:"900 N. McCoy Blvd., New Boston, TX 75570",t:33.4763206,g:-94.4088946},
+            {n:"Paradise QS #11 - New Boston City",a:"900 N. McCoy Blvd., New Boston, TX 75570",t:33.4757206,g:-94.4088946},
+            {n:"Burger King #26015 Hooks",a:"580 Lone Star Dr., Hooks, TX 75561",t:33.4674733,g:-94.2366504},
+            {n:"Paradise QS #13 - Hooks",a:"580 Lone Star Dr., Hooks, TX 75561",t:33.4668733,g:-94.2366504},
             {n:"Burger King #23086 Atlanta",a:"299 U.S. 59, Atlanta, TX 75551",t:33.1178617,g:-94.181756},
-            {n:"Burger King #10358 Nash",a:"1970 N. Kings Hwy, Nash, TX 75569",t:33.4522178,g:-94.1301793},
-            {n:"Paradise QS #06 - Nash",a:"1970 N. Kings Hwy, Nash, TX 75569",t:33.4522378,g:-94.1301993},
+            {n:"Burger King #10358 Nash",a:"1970 N. Kings Hwy, Nash, TX 75569",t:33.4525178,g:-94.1301793},
+            {n:"Paradise QS #06 - Nash",a:"1970 N. Kings Hwy, Nash, TX 75569",t:33.4519178,g:-94.1301793},
             {n:"Paradise QS #08 - Ashdown",a:"950 S. Constitution Avenue, Ashdown, AR 71822",t:33.6625838,g:-94.1192361},
-            {n:"Subway 22411",a:"4103 W, 7th St., Texarkana, TX 75503",t:33.4187104,g:-94.0941756},
-            {n:"Paradise QS #07 - 7th St",a:"4103 W, 7th St., Texarkana, TX 75501",t:33.4185938,g:-94.0940853},
+            {n:"Subway 22411",a:"4103 W, 7th St., Texarkana, TX 75503",t:33.4190104,g:-94.0941756},
+            {n:"Paradise QS #07 - 7th St",a:"4103 W, 7th St., Texarkana, TX 75501",t:33.4184104,g:-94.0941756},
             {n:"Paradise QS #09 - New Boston Rd",a:"3400 New Boston Rd., Texarkana, TX 75501",t:33.4403875,g:-94.0875947},
             {n:"Paradise QS #12- Summerhill",a:"4621 Summerhill Rd., Texarkana, TX 75503",t:33.4630376,g:-94.0661119},
             {n:"Paradise QS #10 - Texas Blvd",a:"3300 Texas Blvd, Texarkana, TX 75503",t:33.448522,g:-94.0527795},
@@ -296,13 +289,6 @@
                 setTimeout(() => {
                     cards[0].style.transform = 'scale(1)';
                 }, 500);
-            }
-        };
-
-        window.scrollToTop = function() {
-            const sidebar = document.querySelector('.sidebar');
-            if(sidebar) {
-                sidebar.scrollTo({ top: 0, behavior: 'smooth' });
             }
         };
 
