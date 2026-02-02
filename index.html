@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>DPM Camera Tracker v2.1</title>
+    <title>DPM Camera Tracker v2.3</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -15,6 +15,7 @@
             --yellow: #ffd93d;
             --green: #6bcf7f;
             --blue: #74b9ff;
+            --purple: #a855f7;
             --text: #ffffff;
             --text2: #cbd5e1;
             --border: #2d3a5f;
@@ -104,7 +105,7 @@
     <div class="container">
         <div class="map-section"><div id="map"></div></div>
         <div class="sidebar">
-            <h2>DPM Camera Tracker</h2>
+            <h2>DPM Camera Tracker v2.3</h2>
             <div class="stats">
                 <div class="stat" onclick="window.scrollToStatus('red')"><div class="stat-num" style="color: var(--red);" id="stat-red">0</div><div class="stat-label">Not Started</div></div>
                 <div class="stat" onclick="window.scrollToStatus('yellow')"><div class="stat-num" style="color: var(--yellow);" id="stat-yellow">0</div><div class="stat-label">In Progress</div></div>
@@ -143,6 +144,8 @@
         const db = getDatabase(app);
 
         const locs = [
+            {n:"DPM Office",a:"520 E NW Hwy, Grapevine, TX 76051",t:32.9418,g:-97.0725,special:true},
+            {n:"Bill's Home Base",a:"615 Judy Lane, Seagoville, TX 75159",t:32.6394,g:-96.5386,special:true},
             {n:"Burger King Alliance/TMS 27082",a:"15933 North Freeway, Fort Worth, TX 76177",t:33.0252883,g:-97.2760128},
             {n:"Burger King Alvord 22027",a:"8417 N.US Hwy 287, Alvord, TX 76225",t:33.3925543,g:-97.7297886},
             {n:"Burger King Atlanta 23086",a:"299 U.S. 59, Atlanta, TX 75551",t:33.1178617,g:-94.181756},
@@ -252,16 +255,30 @@
         function addMarkers() {
             locs.forEach(l => {
                 const i = id(l);
-                const d = data[i] || {s:'blue'};
-                const m = L.circleMarker([l.t, l.g], {
-                    radius: 8,
-                    fillColor: color(d.s),
-                    fillOpacity: 1,
-                    color: '#fff',
-                    weight: 2
-                }).addTo(map).bindPopup(popup(l), {maxWidth: 350});
-                m.on('popupopen', () => m.setPopupContent(popup(l)));
-                markers[i] = {m, l};
+                
+                if(l.special) {
+                    // Special locations get purple markers, no popup
+                    const m = L.circleMarker([l.t, l.g], {
+                        radius: 10,
+                        fillColor: '#a855f7',
+                        fillOpacity: 1,
+                        color: '#fff',
+                        weight: 2
+                    }).addTo(map);
+                    markers[i] = {m, l};
+                } else {
+                    // Regular locations with status and popup
+                    const d = data[i] || {s:'blue'};
+                    const m = L.circleMarker([l.t, l.g], {
+                        radius: 8,
+                        fillColor: color(d.s),
+                        fillOpacity: 1,
+                        color: '#fff',
+                        weight: 2
+                    }).addTo(map).bindPopup(popup(l), {maxWidth: 350});
+                    m.on('popupopen', () => m.setPopupContent(popup(l)));
+                    markers[i] = {m, l};
+                }
             });
         }
 
@@ -323,7 +340,9 @@
         function updateStats() {
             const stats = {red:0, yellow:0, green:0, blue:0};
             Object.values(data).forEach(d => stats[d.s]++);
-            locs.forEach(l => { if(!data[id(l)]) stats.blue++; });
+            locs.forEach(l => { 
+                if(!l.special && !data[id(l)]) stats.blue++; 
+            });
             document.getElementById('stat-red').textContent = stats.red;
             document.getElementById('stat-yellow').textContent = stats.yellow;
             document.getElementById('stat-green').textContent = stats.green;
@@ -331,10 +350,17 @@
         }
 
         function renderList() {
-            const ff = [], cs = [];
+            const ff = [], cs = [], specialFF = [], specialCS = [];
             locs.forEach(l => {
-                if(l.n.includes('Burger King') || l.n.includes('Subway')) ff.push(l);
-                else cs.push(l);
+                if(l.special) {
+                    // Special locations go to their respective columns
+                    if(l.n.includes('DPM')) specialFF.push(l);
+                    else if(l.n.includes('Bill')) specialCS.push(l);
+                } else if(l.n.includes('Burger King') || l.n.includes('Subway')) {
+                    ff.push(l);
+                } else {
+                    cs.push(l);
+                }
             });
             
             // Sort Fast Food alphabetically by city name (strip prefixes)
@@ -359,20 +385,31 @@
 
             const mkCard = l => {
                 const i = id(l);
-                const d = data[i] || {s:'blue'};
                 const c = document.createElement('div');
                 c.className = 'card';
-                c.setAttribute('data-status', d.s);
-                c.setAttribute('data-location-id', i);
-                c.innerHTML = `<div class="card-name">${l.n}</div><div class="card-addr">${l.a}</div><span class="card-status status-${d.s}">${d.s==='red'?'Not Started':d.s==='yellow'?'In Progress':d.s==='green'?'Completed':'No Issues'}</span>`;
-                c.onclick = () => {
-                    if(window.innerWidth <= 1023 && window.matchMedia('(orientation: portrait)').matches) {
-                        window.openMobileModal(l);
-                    } else {
-                        map.setView([l.t, l.g], 13);
-                        setTimeout(() => markers[i].m.openPopup(), 100);
-                    }
-                };
+                
+                if(l.special) {
+                    // Special location - no status, just name and address link
+                    c.innerHTML = `<div class="card-name" style="color: var(--purple);">📍 ${l.n}</div><div class="card-addr" style="cursor: pointer; text-decoration: underline;" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}', '_blank')">${l.a}</div>`;
+                    c.style.borderColor = 'var(--purple)';
+                    c.onclick = () => {
+                        map.setView([l.t, l.g], 15);
+                    };
+                } else {
+                    // Regular location with status
+                    const d = data[i] || {s:'blue'};
+                    c.setAttribute('data-status', d.s);
+                    c.setAttribute('data-location-id', i);
+                    c.innerHTML = `<div class="card-name">${l.n}</div><div class="card-addr">${l.a}</div><span class="card-status status-${d.s}">${d.s==='red'?'Not Started':d.s==='yellow'?'In Progress':d.s==='green'?'Completed':'No Issues'}</span>`;
+                    c.onclick = () => {
+                        if(window.innerWidth <= 1023 && window.matchMedia('(orientation: portrait)').matches) {
+                            window.openMobileModal(l);
+                        } else {
+                            map.setView([l.t, l.g], 13);
+                            setTimeout(() => markers[i].m.openPopup(), 100);
+                        }
+                    };
+                }
                 return c;
             };
 
@@ -381,11 +418,13 @@
             const c1 = document.createElement('div');
             c1.className = 'location-column';
             c1.innerHTML = '<div class="column-header">Fast Food</div>';
+            specialFF.forEach(l => c1.appendChild(mkCard(l)));
             ff.forEach(l => c1.appendChild(mkCard(l)));
             
             const c2 = document.createElement('div');
             c2.className = 'location-column';
             c2.innerHTML = '<div class="column-header">C-Store</div>';
+            specialCS.forEach(l => c2.appendChild(mkCard(l)));
             cs.forEach(l => c2.appendChild(mkCard(l)));
             
             list.appendChild(c1);
