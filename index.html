@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>DPM Camera Job Tracker</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        * {
+        *{
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -980,10 +981,33 @@
                 column1.appendChild(card);
             });
 
-            // Create column 2: Paradise QS & Others
+            // Create column 2: Paradise QS & Others (SORTED)
             const column2 = document.createElement('div');
             column2.className = 'location-column';
             column2.innerHTML = '<div class="column-header">C-Store</div>';
+            
+            // Sort: PQS #01 first, then by number, then car wash/7-11 last
+            paradiseOthers.sort((a, b) => {
+                const getPQSNum = (name) => {
+                    const match = name.match(/Paradise QS #(\d+)/);
+                    return match ? parseInt(match[1]) : null;
+                };
+                
+                const aNum = getPQSNum(a.name);
+                const bNum = getPQSNum(b.name);
+                
+                // Both PQS - sort by number
+                if (aNum !== null && bNum !== null) return aNum - bNum;
+                
+                // a is PQS, b isn't - a first
+                if (aNum !== null) return -1;
+                
+                // b is PQS, a isn't - b first
+                if (bNum !== null) return 1;
+                
+                // Neither PQS - alphabetical (car wash/7-11 last)
+                return a.name.localeCompare(b.name);
+            });
             
             paradiseOthers.forEach(location => {
                 const locationId = getLocationId(location);
