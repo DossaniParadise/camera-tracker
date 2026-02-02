@@ -57,13 +57,16 @@
         .leaflet-popup-content { margin: 0; width: 320px !important; }
         .popup { padding: 16px; }
         .popup-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-        .popup-addr { font-size: 10px; color: var(--text2); margin-bottom: 12px; }
+        .popup-addr { font-size: 10px; color: var(--text2); margin-bottom: 12px; cursor: pointer; text-decoration: underline; }
+        .popup-addr:hover { color: var(--blue); }
         
         .mobile-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
         .mobile-modal.active { display: flex; }
         .modal-content { background: var(--bg); border: 2px solid var(--border); border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
         .modal-close { position: sticky; top: 0; background: var(--bg); padding: 12px; border-bottom: 2px solid var(--border); text-align: right; }
         .modal-close button { background: var(--bg2); color: var(--text); border: 2px solid var(--border); padding: 8px 16px; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; cursor: pointer; }
+        
+        .scroll-top { display: none; }
         
         .form-group { margin-bottom: 12px; }
         .form-label { font-size: 10px; font-weight: 700; color: var(--text2); margin-bottom: 4px; display: block; }
@@ -84,8 +87,11 @@
         @media (max-width: 1023px) and (orientation: portrait) {
             .container { display: block; }
             .map-section { display: none; }
-            .sidebar { width: 100%; height: 100vh; max-height: 100vh; }
+            .sidebar { width: 100%; height: 100vh; max-height: 100vh; position: relative; }
             .location-column { max-height: none; overflow-y: visible; }
+            
+            .scroll-top { display: block; position: fixed; bottom: 20px; right: 20px; background: var(--blue); color: white; width: 50px; height: 50px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(59,130,246,0.5); z-index: 9999; transition: all 0.3s; }
+            .scroll-top:active { transform: scale(0.95); }
         }
         
         @media (max-width: 1023px) and (orientation: landscape) {
@@ -119,6 +125,8 @@
         </div>
     </div>
 
+    <button class="scroll-top" onclick="window.scrollToTop()">↑</button>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
@@ -151,7 +159,7 @@
             {n:"Burger King #26924 Corinth",a:"8001 S. Interstate 35 E, Corinth, TX 76210",t:33.1323896,g:-97.0414887},
             {n:"Burger King #28514 Midlothian",a:"2251 FM 663, Midlothian, TX 76065",t:32.4600926,g:-96.9959456},
             {n:"Burger King #28313 Cross Roads",a:"11881 US-380, Cross Roads, TX 76227",t:33.2241299,g:-96.9820109},
-            {n:"Paradise QS #02 - Lewisville",a:"521 E. Hwy 121, Lewisville, TX 75057",t:32.9906715,g:-96.9780407},
+            {n:"Paradise QS #02 - Lewsville",a:"521 E. Hwy 121, Lewisville, TX 75057",t:32.9906715,g:-96.9780407},
             {n:"Burger King #9723 The Colony",a:"3700 Main St, The Colony, TX 75056",t:33.0674516,g:-96.8893989},
             {n:"Scarborough Car Wash",a:"1448 FM 66, Waxahachie, TX 75167",t:32.3741146,g:-96.8662758},
             {n:"7-Eleven - Riverfront",a:"1005 S. Riverfront Blvd., Dallas, TX 75207",t:32.7654016,g:-96.8034512},
@@ -204,9 +212,10 @@
             const d = data[i] || {s:'blue',v:'',issue:'',notes:[]};
             const notesHtml = d.notes && d.notes.length > 0 ? 
                 `<div class="notes">${d.notes.map(n=>`<div class="note"><div class="note-date">${new Date(n.t).toLocaleString()}</div><div class="note-text">${n.n}</div></div>`).join('')}</div>` : '';
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}`;
             return `<div class="popup">
                 <div class="popup-title">${l.n}</div>
-                <div class="popup-addr">${l.a}</div>
+                <div class="popup-addr" onclick="window.open('${mapsUrl}', '_blank')">📍 ${l.a}</div>
                 <div class="form-group">
                     <label class="form-label">Status</label>
                     <select class="form-select" id="s-${i}" onchange="window.previewStatus('${i}')">
@@ -288,6 +297,10 @@
                     cards[0].style.transform = 'scale(1)';
                 }, 500);
             }
+        };
+
+        window.scrollToTop = function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
         function updateStats() {
