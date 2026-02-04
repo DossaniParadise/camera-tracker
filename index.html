@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>DPM Camera Tracker v2.4</title>
+    <title>DPM Camera Tracker v2.4.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -108,11 +108,11 @@
     <div class="container">
         <div class="map-section"><div id="map"></div></div>
         <div class="sidebar">
-            <h2>DPM Camera Tracker v2.4</h2>
+            <h2>DPM Camera Tracker v2.4.1</h2>
             <div class="stats">
                 <div class="stat" onclick="window.scrollToStatus('red')"><div class="stat-num" style="color: var(--red);" id="stat-red">0</div><div class="stat-label">Not Started</div></div>
                 <div class="stat" onclick="window.scrollToStatus('yellow')"><div class="stat-num" style="color: var(--yellow);" id="stat-yellow">0</div><div class="stat-label">In Progress</div></div>
-                <div class="stat" onclick="window.scrollToStatus('darkgreen')"><div class="stat-num" style="color: var(--darkgreen);" id="stat-darkgreen">0</div><div class="stat-label">Done Unpaid</div></div>
+                <div class="stat" onclick="window.scrollToStatus('darkgreen')"><div class="stat-num" style="color: var(--darkgreen);" id="stat-darkgreen">0</div><div class="stat-label">Done & Unpaid</div></div>
                 <div class="stat" onclick="window.scrollToStatus('green')"><div class="stat-num" style="color: var(--green);" id="stat-green">0</div><div class="stat-label">Done & Paid</div></div>
                 <div class="stat" onclick="window.scrollToStatus('blue')"><div class="stat-num" style="color: var(--blue);" id="stat-blue">0</div><div class="stat-label">No Issues</div></div>
             </div>
@@ -236,7 +236,7 @@
                         <option value="blue" ${d.s==='blue'?'selected':''}>No Issues</option>
                         <option value="red" ${d.s==='red'?'selected':''}>Not Started</option>
                         <option value="yellow" ${d.s==='yellow'?'selected':''}>In Progress</option>
-                        <option value="darkgreen" ${d.s==='darkgreen'?'selected':''}>Done Unpaid</option>
+                        <option value="darkgreen" ${d.s==='darkgreen'?'selected':''}>Done & Unpaid</option>
                         <option value="green" ${d.s==='green'?'selected':''}>Done & Paid</option>
                     </select>
                 </div>
@@ -425,7 +425,7 @@
                     const d = data[i] || {s:'blue'};
                     c.setAttribute('data-status', d.s);
                     c.setAttribute('data-location-id', i);
-                    const statusText = d.s==='red'?'Not Started':d.s==='yellow'?'In Progress':d.s==='darkgreen'?'Done Unpaid':d.s==='green'?'Done & Paid':'No Issues';
+                    const statusText = d.s==='red'?'Not Started':d.s==='yellow'?'In Progress':d.s==='darkgreen'?'Done & Unpaid':d.s==='green'?'Done & Paid':'No Issues';
                     c.innerHTML = `<div class="card-name">${l.n}</div><div class="card-addr">${l.a}</div><span class="card-status status-${d.s}">${statusText}</span>`;
                     c.onclick = () => {
                         if(window.innerWidth <= 1023 && window.matchMedia('(orientation: portrait)').matches) {
