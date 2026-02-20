@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>DPM Camera Tracker v2.6.1</title>
+    <title>DPM Camera Tracker v2.6.2</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -88,19 +88,21 @@
         .btn-primary { background: var(--blue); color: white; }
         .btn-secondary { background: var(--bg2); color: var(--text); border: 2px solid var(--border); }
         
-        @media (max-width: 1023px) and (orientation: portrait) {
-            .container { display: block; }
-            .map-section { display: none; }
-            .sidebar { width: 100%; height: 100vh; max-height: 100vh; position: relative; }
+        /* Tablet / small laptop: map on top, sidebar scrolls below */
+        @media (max-width: 1023px) {
+            .container { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+            .map-section { width: 100%; height: 40vh; min-height: 200px; flex-shrink: 0; }
+            #map { height: 100%; }
+            .sidebar { width: 100%; height: auto; flex: 1; overflow-y: visible; }
             .location-column { max-height: none; overflow-y: visible; }
-            
             .scroll-top-btn { display: block; position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; background: var(--blue); color: white; border: none; border-radius: 50%; font-size: 24px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(59,130,246,0.5); z-index: 9999; }
         }
-        
-        @media (max-width: 1023px) and (orientation: landscape) {
-            .container { display: block; }
-            .sidebar { display: none; }
-            .map-section { width: 100%; height: 100vh; }
+
+        /* Phone portrait only: hide map, full-screen sidebar */
+        @media (max-width: 600px) and (orientation: portrait) {
+            .map-section { display: none; }
+            .container { height: 100vh; }
+            .sidebar { height: 100vh; overflow-y: auto; }
         }
     </style>
 </head>
@@ -108,7 +110,7 @@
     <div class="container">
         <div class="map-section"><div id="map"></div></div>
         <div class="sidebar">
-            <h2>DPM Camera Tracker v2.6.1</h2>
+            <h2>DPM Camera Tracker v2.6.2</h2>
             <div class="stats">
                 <div class="stat" onclick="window.scrollToStatus('red')"><div class="stat-num" style="color: var(--red);" id="stat-red">0</div><div class="stat-label">Not Started</div></div>
                 <div class="stat" onclick="window.scrollToStatus('yellow')"><div class="stat-num" style="color: var(--yellow);" id="stat-yellow">0</div><div class="stat-label">In Progress</div></div>
@@ -567,7 +569,7 @@
                     const statusText = d.s==='red'?'Not Started':d.s==='yellow'?'In Progress':d.s==='darkgreen'?'Done & Unpaid':d.s==='green'?'Done & Paid':'No Issues';
                     c.innerHTML = `<div class="card-name">${l.n}</div><div class="card-addr">${l.a}</div><span class="card-status status-${d.s}">${statusText}</span>`;
                     c.onclick = () => {
-                        if(window.innerWidth <= 1023 && window.matchMedia('(orientation: portrait)').matches) {
+                        if(window.innerWidth <= 600 && window.matchMedia('(orientation: portrait)').matches) {
                             window.openMobileModal(l);
                         } else {
                             map.setView([l.t, l.g], 13);
