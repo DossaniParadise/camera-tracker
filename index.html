@@ -146,6 +146,7 @@
             appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
         });
         const db = getDatabase(app);
+        const IMGBB_API_KEY = 'b733862d15744e2bfaa4329d122f4ba0';
 
         const locs = [
             {n:"DPM Office",a:"520 E NW Hwy, Grapevine, TX 76051",t:32.9418,g:-97.0725,special:true},
@@ -217,7 +218,7 @@
         const draftTimers = {};
 
         function id(l) { return `${l.t}_${l.g}`.replace(/\./g, '_'); }
-         function draftKey(locationId) { return `cameraTrackerDraft:${locationId}`; }
+        function draftKey(locationId) { return `cameraTrackerDraft:${locationId}`; }
         function readDraft(locationId) {
             try {
                 const raw = localStorage.getItem(draftKey(locationId));
@@ -239,18 +240,23 @@
             const visitEl = document.getElementById(`v-${locationId}`);
             const issueEl = document.getElementById(`i-${locationId}`);
             const noteEl = document.getElementById(`n-${locationId}`);
-            const photoEl = document.getElementById(`p-${locationId}`);
-            if(!statusEl || !visitEl || !issueEl || !noteEl || !photoEl) return;
+            if (!statusEl || !visitEl || !issueEl || !noteEl) return;
 
             const draft = {
                 s: statusEl.value,
                 v: visitEl.value,
                 issueDraft: issueEl.value,
                 newNoteDraft: noteEl.value,
-                photoDraft: photoEl.value,
                 updatedAt: new Date().toISOString()
             };
-            localStorage.setItem(draftKey(locationId), JSON.stringify(draft));
+            // Note: photo (base64) is intentionally excluded from drafts to avoid
+            // exceeding localStorage limits. Photos must be re-selected if the popup
+            // is closed before saving.
+            try {
+                localStorage.setItem(draftKey(locationId), JSON.stringify(draft));
+            } catch(err) {
+                console.warn('Draft write failed (storage full?):', err);
+            }
         }
         function queueDraftWrite(locationId) {
             if(draftTimers[locationId]) clearTimeout(draftTimers[locationId]);
@@ -279,8 +285,8 @@
         function popup(l) {
             const i = id(l);
             const d = data[i] || {s:'blue',v:'',issue:'',notes:[]};
-              const draft = readDraft(i) || {};
-            const photoData = draft.photoDraft ?? d.photoDataUrl ?? '';
+            const draft = readDraft(i) || {};
+            const photoData = d.photoUrl ?? '';
             const notesHtml = d.notes && d.notes.length > 0 ? 
                 `<div class="notes">${d.notes.map(n=>`<div class="note"><div class="note-date">${new Date(n.t).toLocaleString()}</div><div class="note-text">${n.n}</div></div>`).join('')}</div>` : '';
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}`;
@@ -308,16 +314,16 @@
                 ${notesHtml}
                 <div class="form-group">
                     <label class="form-label">Add Note</label>
-                                       <textarea class="form-textarea" id="n-${i}">${draft.newNoteDraft ?? ''}</textarea>
+                    <textarea class="form-textarea" id="n-${i}">${draft.newNoteDraft ?? ''}</textarea>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Photo (1 image)</label>
                     <input type="file" class="form-input" accept="image/*" id="f-${i}" onchange="window.handlePhotoUpload('${i}', this)">
                     <input type="hidden" id="p-${i}" value="${photoData}">
                     <div id="img-wrap-${i}" style="margin-top:8px;${photoData ? '' : 'display:none;'}">
-                        <img id="img-${i}" src="${photoData}" alt="Location photo" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+                        <img id="img-${i}" src="${photoData}" alt="Location photo" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px;border:1px solid var(--border);transition:opacity 0.2s;">
                         <button class="btn btn-secondary" style="margin-top:8px;width:100%;" onclick="window.clearPhoto('${i}')">Remove Photo</button>
-                    </div
+                    </div>
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="window.save('${i}')">Save</button>
@@ -350,7 +356,7 @@
                         color: '#fff',
                         weight: 2
                     }).addTo(map).bindPopup(popup(l), {maxWidth: 350});
-                      m.on('popupopen', () => {
+                    m.on('popupopen', () => {
                         m.setPopupContent(popup(l));
                         attachDraftListeners(i);
                     });
@@ -365,7 +371,7 @@
                 markers[i].m.setStyle({fillColor: color(d.s)});
             }
         }
-  window.handlePhotoUpload = function(i, inputEl) {
+        window.handlePhotoUpload = async function(i, inputEl) {
             const file = inputEl.files && inputEl.files[0];
             if(!file) return;
             if(!file.type.startsWith('image/')) {
@@ -373,15 +379,50 @@
                 inputEl.value = '';
                 return;
             }
-            const reader = new FileReader();
-            reader.onload = e => {
-                const dataUrl = e.target.result;
-                document.getElementById(`p-${i}`).value = dataUrl;
-                document.getElementById(`img-${i}`).src = dataUrl;
-                document.getElementById(`img-wrap-${i}`).style.display = '';
+
+            // Show loading state
+            const imgWrap = document.getElementById(`img-wrap-${i}`);
+            const imgEl = document.getElementById(`img-${i}`);
+            const photoEl = document.getElementById(`p-${i}`);
+            imgWrap.style.display = '';
+            imgEl.style.opacity = '0.4';
+            imgEl.src = '';
+            imgWrap.querySelector('button') && (imgWrap.querySelector('button').disabled = true);
+
+            // Show a local preview immediately while uploading
+            const localUrl = URL.createObjectURL(file);
+            imgEl.src = localUrl;
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const json = await res.json();
+
+                if(!json.success) throw new Error(json.error?.message || 'Upload failed');
+
+                const url = json.data.url;
+                photoEl.value = url;
+                imgEl.src = url;
+                imgEl.style.opacity = '1';
+                URL.revokeObjectURL(localUrl);
                 queueDraftWrite(i);
-            };
-            reader.readAsDataURL(file);
+            } catch(err) {
+                imgWrap.style.display = 'none';
+                imgEl.src = '';
+                photoEl.value = '';
+                inputEl.value = '';
+                URL.revokeObjectURL(localUrl);
+                alert('Photo upload failed: ' + err.message);
+            } finally {
+                imgEl.style.opacity = '1';
+                const btn = imgWrap.querySelector('button');
+                if(btn) btn.disabled = false;
+            }
         };
 
         window.clearPhoto = function(i) {
@@ -401,10 +442,10 @@
         };
 
         window.openMobileModal = function(l) {
-             const i = id(l);
+            const i = id(l);
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = popup(l);
-             attachDraftListeners(i);
+            attachDraftListeners(i);
             document.getElementById('modal').classList.add('active');
             document.body.style.overflow = 'hidden';
         };
@@ -565,12 +606,16 @@
                     console.log('Added note:', newNote);
                 }
                 
+                const photoEl = document.getElementById(`p-${i}`);
                 const saveData = {
                     s: document.getElementById(`s-${i}`).value,
                     v: document.getElementById(`v-${i}`).value,
                     issue: document.getElementById(`i-${i}`).value,
-                    notes: notes
+                    notes: notes,
+                    photoUrl: (photoEl && photoEl.value) ? photoEl.value : (data[i]?.photoUrl ?? null)
                 };
+                // Remove null photoUrl to keep Firebase clean
+                if(!saveData.photoUrl) delete saveData.photoUrl;
                 
                 console.log('Saving data:', saveData);
                 
@@ -599,6 +644,7 @@
             if(confirm('Clear all data?')) {
                 set(ref(db, 'jobs/' + i), null).then(() => {
                     delete data[i];
+                    clearDraft(i);
                     updateMarker(i);
                     updateStats();
                     renderList();
