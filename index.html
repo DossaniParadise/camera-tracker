@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>DPM Camera Tracker v2.5.1</title>
+    <title>DPM Camera Tracker v2.6.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -108,7 +108,7 @@
     <div class="container">
         <div class="map-section"><div id="map"></div></div>
         <div class="sidebar">
-            <h2>DPM Camera Tracker v2.4.1</h2>
+            <h2>DPM Camera Tracker v2.6.1</h2>
             <div class="stats">
                 <div class="stat" onclick="window.scrollToStatus('red')"><div class="stat-num" style="color: var(--red);" id="stat-red">0</div><div class="stat-label">Not Started</div></div>
                 <div class="stat" onclick="window.scrollToStatus('yellow')"><div class="stat-num" style="color: var(--yellow);" id="stat-yellow">0</div><div class="stat-label">In Progress</div></div>
@@ -214,8 +214,63 @@
 
         let data = {};
         let markers = {};
+        const draftTimers = {};
 
         function id(l) { return `${l.t}_${l.g}`.replace(/\./g, '_'); }
+         function draftKey(locationId) { return `cameraTrackerDraft:${locationId}`; }
+        function readDraft(locationId) {
+            try {
+                const raw = localStorage.getItem(draftKey(locationId));
+                return raw ? JSON.parse(raw) : null;
+            } catch(err) {
+                console.error('Draft read error:', err);
+                return null;
+            }
+        }
+        function clearDraft(locationId) {
+            localStorage.removeItem(draftKey(locationId));
+            if(draftTimers[locationId]) {
+                clearTimeout(draftTimers[locationId]);
+                delete draftTimers[locationId];
+            }
+        }
+        function writeDraft(locationId) {
+            const statusEl = document.getElementById(`s-${locationId}`);
+            const visitEl = document.getElementById(`v-${locationId}`);
+            const issueEl = document.getElementById(`i-${locationId}`);
+            const noteEl = document.getElementById(`n-${locationId}`);
+            const photoEl = document.getElementById(`p-${locationId}`);
+            if(!statusEl || !visitEl || !issueEl || !noteEl || !photoEl) return;
+
+            const draft = {
+                s: statusEl.value,
+                v: visitEl.value,
+                issueDraft: issueEl.value,
+                newNoteDraft: noteEl.value,
+                photoDraft: photoEl.value,
+                updatedAt: new Date().toISOString()
+            };
+            localStorage.setItem(draftKey(locationId), JSON.stringify(draft));
+        }
+        function queueDraftWrite(locationId) {
+            if(draftTimers[locationId]) clearTimeout(draftTimers[locationId]);
+            draftTimers[locationId] = setTimeout(() => writeDraft(locationId), 300);
+        }
+        function attachDraftListeners(locationId) {
+            const els = [
+                document.getElementById(`s-${locationId}`),
+                document.getElementById(`v-${locationId}`),
+                document.getElementById(`i-${locationId}`),
+                document.getElementById(`n-${locationId}`)
+            ];
+            if(els.some(el => !el)) return;
+            els.forEach(el => {
+                if(el.dataset.draftBound === '1') return;
+                const evt = el.tagName === 'SELECT' ? 'change' : 'input';
+                el.addEventListener(evt, () => queueDraftWrite(locationId));
+                el.dataset.draftBound = '1';
+            });
+        }
         function color(s, isOffice) { 
             if(isOffice) return '#a855f7'; // purple for offices
             return s==='red'?'#ff6b6b':s==='yellow'?'#ffd93d':s==='darkgreen'?'#2d7a4f':s==='green'?'#6bcf7f':'#74b9ff'; 
@@ -224,6 +279,8 @@
         function popup(l) {
             const i = id(l);
             const d = data[i] || {s:'blue',v:'',issue:'',notes:[]};
+              const draft = readDraft(i) || {};
+            const photoData = draft.photoDraft ?? d.photoDataUrl ?? '';
             const notesHtml = d.notes && d.notes.length > 0 ? 
                 `<div class="notes">${d.notes.map(n=>`<div class="note"><div class="note-date">${new Date(n.t).toLocaleString()}</div><div class="note-text">${n.n}</div></div>`).join('')}</div>` : '';
             const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}`;
@@ -233,25 +290,34 @@
                 <div class="form-group">
                     <label class="form-label">Status</label>
                     <select class="form-select" id="s-${i}" onchange="window.previewStatus('${i}')">
-                        <option value="blue" ${d.s==='blue'?'selected':''}>No Issues</option>
-                        <option value="red" ${d.s==='red'?'selected':''}>Not Started</option>
-                        <option value="yellow" ${d.s==='yellow'?'selected':''}>In Progress</option>
-                        <option value="darkgreen" ${d.s==='darkgreen'?'selected':''}>Done & Unpaid</option>
-                        <option value="green" ${d.s==='green'?'selected':''}>Done & Paid</option>
+                      <option value="blue" ${(draft.s || d.s)==='blue'?'selected':''}>No Issues</option>
+                        <option value="red" ${(draft.s || d.s)==='red'?'selected':''}>Not Started</option>
+                        <option value="yellow" ${(draft.s || d.s)==='yellow'?'selected':''}>In Progress</option>
+                        <option value="darkgreen" ${(draft.s || d.s)==='darkgreen'?'selected':''}>Done & Unpaid</option>
+                        <option value="green" ${(draft.s || d.s)==='green'?'selected':''}>Done & Paid</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Visit Date</label>
-                    <input type="date" class="form-input" id="v-${i}" value="${d.v||''}">
+                    <input type="date" class="form-input" id="v-${i}" value="${draft.v ?? d.v ?? ''}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Issue</label>
-                    <textarea class="form-textarea" id="i-${i}">${d.issue||''}</textarea>
+                    <textarea class="form-textarea" id="i-${i}">${draft.issueDraft ?? d.issue ?? ''}</textarea>
                 </div>
                 ${notesHtml}
                 <div class="form-group">
                     <label class="form-label">Add Note</label>
-                    <textarea class="form-textarea" id="n-${i}"></textarea>
+                                       <textarea class="form-textarea" id="n-${i}">${draft.newNoteDraft ?? ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Photo (1 image)</label>
+                    <input type="file" class="form-input" accept="image/*" id="f-${i}" onchange="window.handlePhotoUpload('${i}', this)">
+                    <input type="hidden" id="p-${i}" value="${photoData}">
+                    <div id="img-wrap-${i}" style="margin-top:8px;${photoData ? '' : 'display:none;'}">
+                        <img id="img-${i}" src="${photoData}" alt="Location photo" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">
+                        <button class="btn btn-secondary" style="margin-top:8px;width:100%;" onclick="window.clearPhoto('${i}')">Remove Photo</button>
+                    </div
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="window.save('${i}')">Save</button>
@@ -284,7 +350,10 @@
                         color: '#fff',
                         weight: 2
                     }).addTo(map).bindPopup(popup(l), {maxWidth: 350});
-                    m.on('popupopen', () => m.setPopupContent(popup(l)));
+                      m.on('popupopen', () => {
+                        m.setPopupContent(popup(l));
+                        attachDraftListeners(i);
+                    });
                     markers[i] = {m, l};
                 }
             });
@@ -296,6 +365,33 @@
                 markers[i].m.setStyle({fillColor: color(d.s)});
             }
         }
+  window.handlePhotoUpload = function(i, inputEl) {
+            const file = inputEl.files && inputEl.files[0];
+            if(!file) return;
+            if(!file.type.startsWith('image/')) {
+                alert('Please choose an image file.');
+                inputEl.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = e => {
+                const dataUrl = e.target.result;
+                document.getElementById(`p-${i}`).value = dataUrl;
+                document.getElementById(`img-${i}`).src = dataUrl;
+                document.getElementById(`img-wrap-${i}`).style.display = '';
+                queueDraftWrite(i);
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.clearPhoto = function(i) {
+            const photoEl = document.getElementById(`p-${i}`);
+            const fileEl = document.getElementById(`f-${i}`);
+            if(photoEl) photoEl.value = '';
+            if(fileEl) fileEl.value = '';
+            document.getElementById(`img-wrap-${i}`).style.display = 'none';
+            queueDraftWrite(i);
+        };
 
         window.previewStatus = function(i) {
             const newStatus = document.getElementById(`s-${i}`).value;
@@ -305,8 +401,10 @@
         };
 
         window.openMobileModal = function(l) {
+             const i = id(l);
             const modalBody = document.getElementById('modal-body');
             modalBody.innerHTML = popup(l);
+             attachDraftListeners(i);
             document.getElementById('modal').classList.add('active');
             document.body.style.overflow = 'hidden';
         };
