@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>DPM Camera Tracker v2.7</title>
+    <title>DPM Camera Tracker v2.8</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -364,14 +364,21 @@
         // ─────────────────────────────────────────
         // Stats
         // ─────────────────────────────────────────
+        function getEffectiveStatus(locData) {
+            // Open ticket wins. If no open ticket, use the most recent archived ticket's status.
+            const open = getOpenTicket(locData);
+            if(open) return open.s || 'blue';
+            const all = getSortedTickets(locData);
+            if(all.length > 0) return all[all.length - 1].s || 'blue';
+            return 'none';
+        }
+
         function updateStats() {
             const counts = { red:0, yellow:0, darkgreen:0, green:0, none:0 };
             locs.forEach(l => {
                 if(l.special) return;
-                const open = getOpenTicket(data[locId(l)]);
-                if(!open) { counts.none++; return; }
-                const s = open.s || 'blue';
-                if(s === 'blue') counts.none++;
+                const s = getEffectiveStatus(data[locId(l)]);
+                if(s === 'blue' || s === 'none') counts.none++;
                 else counts[s] = (counts[s] || 0) + 1;
             });
             document.getElementById('stat-red').textContent       = counts.red;
@@ -444,10 +451,9 @@
                 const all = getSortedTickets(d);
                 const archivedCount = all.filter(t => t.archived).length;
 
-                // Filter status for stat-bar filtering
-                let filterStatus = 'none';
-                if(open && open.s && open.s !== 'blue') filterStatus = open.s;
-                c.dataset.filterStatus = filterStatus;
+                // Filter status: open ticket wins, otherwise fall back to most recent archived
+                const effectiveStatus = getEffectiveStatus(d);
+                c.dataset.filterStatus = (effectiveStatus === 'blue' || effectiveStatus === 'none') ? 'none' : effectiveStatus;
 
                 // Card border reflects open ticket status
                 c.style.borderColor = open ? statusColor(open.s || 'blue') : 'var(--border)';
