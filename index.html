@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>DPM Camera Tracker v2.6.3</title>
+    <title>DPM Camera Tracker v2.7</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -11,6 +11,7 @@
         :root {
             --bg: #0a0e27;
             --bg2: #1a2140;
+            --bg3: #111830;
             --red: #ff6b6b;
             --yellow: #ffd93d;
             --green: #6bcf7f;
@@ -22,73 +23,128 @@
             --border: #2d3a5f;
         }
         body { font-family: 'Space Mono', monospace; background: var(--bg); color: var(--text); }
-        
+
         .container { display: grid; grid-template-columns: 1fr 500px; height: 100vh; }
         .map-section { position: relative; }
         #map { width: 100%; height: 100%; filter: brightness(0.9); }
-        
+
         .sidebar { background: var(--bg); overflow-y: auto; padding: 20px; }
         .sidebar::-webkit-scrollbar { width: 0; height: 0; }
         .sidebar { scrollbar-width: none; -ms-overflow-style: none; }
         .sidebar h2 { font-size: 18px; margin-bottom: 20px; }
-        
+
+        /* ── Stats bar ── */
         .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
         .stat { background: var(--bg2); padding: 12px; border-radius: 8px; text-align: center; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
         .stat:hover { transform: translateY(-2px); border-color: var(--blue); }
         .stat:active { transform: translateY(0); }
         .stat-num { font-size: 24px; font-weight: 700; }
         .stat-label { font-size: 9px; color: var(--text2); text-transform: uppercase; margin-top: 4px; }
-        
+
+        /* ── Location columns ── */
         .location-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .location-column { display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 250px); overflow-y: auto; }
         .location-column::-webkit-scrollbar { width: 0; height: 0; }
         .location-column { scrollbar-width: none; -ms-overflow-style: none; }
         .column-header { font-size: 12px; font-weight: 700; color: var(--text2); padding: 8px 0; border-bottom: 2px solid var(--border); margin-bottom: 4px; }
-        
+
+        /* ── Location cards ── */
         .card { background: var(--bg2); border: 2px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; }
         .card:hover { border-color: var(--blue); transform: translateY(-1px); }
         .card-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
         .card-addr { font-size: 12px; color: var(--text2); margin-bottom: 8px; line-height: 1.4; }
-        .card-status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-        .status-red { background: rgba(255, 107, 107, 0.2); color: var(--red); border: 1px solid var(--red); }
-        .status-yellow { background: rgba(255, 217, 61, 0.2); color: var(--yellow); border: 1px solid var(--yellow); }
-        .status-darkgreen { background: rgba(45, 122, 79, 0.2); color: var(--darkgreen); border: 1px solid var(--darkgreen); }
-        .status-green { background: rgba(107, 207, 127, 0.2); color: var(--green); border: 1px solid var(--green); }
-        .status-blue { background: rgba(116, 185, 255, 0.2); color: var(--blue); border: 1px solid var(--blue); }
-        .status-purple { background: rgba(168, 85, 247, 0.2); color: var(--purple); border: 1px solid var(--purple); }
-        
+        .card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .ticket-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+        .badge-open { background: rgba(116,185,255,0.15); color: var(--blue); border: 1px solid var(--blue); }
+        .badge-none { background: rgba(45,58,95,0.4); color: var(--text2); border: 1px solid var(--border); }
+        .badge-status { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+        .status-red       { background: rgba(255,107,107,0.2);  color: var(--red);       border: 1px solid var(--red); }
+        .status-yellow    { background: rgba(255,217,61,0.2);   color: var(--yellow);    border: 1px solid var(--yellow); }
+        .status-darkgreen { background: rgba(45,122,79,0.2);    color: var(--darkgreen); border: 1px solid var(--darkgreen); }
+        .status-green     { background: rgba(107,207,127,0.2);  color: var(--green);     border: 1px solid var(--green); }
+        .status-blue      { background: rgba(116,185,255,0.2);  color: var(--blue);      border: 1px solid var(--blue); }
+        .status-purple    { background: rgba(168,85,247,0.2);   color: var(--purple);    border: 1px solid var(--purple); }
+
+        /* ── Leaflet popup ── */
         .leaflet-popup-content-wrapper { background: var(--bg); color: var(--text); border: 2px solid var(--border); border-radius: 12px; font-family: 'Space Mono', monospace; }
-        .leaflet-popup-content { margin: 0; width: 320px !important; }
-        .popup { padding: 16px; }
-        .popup-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
-        .popup-addr { font-size: 13px; color: var(--text2); margin-bottom: 12px; cursor: pointer; text-decoration: underline; line-height: 1.4; }
-        .popup-addr:hover { color: var(--blue); }
-        
-        .mobile-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
-        .mobile-modal.active { display: flex; }
-        .modal-content { background: var(--bg); border: 2px solid var(--border); border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
-        .modal-close { position: sticky; top: 0; background: var(--bg); padding: 12px; border-bottom: 2px solid var(--border); text-align: right; }
-        .modal-close button { background: var(--bg2); color: var(--text); border: 2px solid var(--border); padding: 10px 18px; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; cursor: pointer; }
-        
-        .scroll-top-btn { display: none; }
-        
+        .leaflet-popup-content { margin: 0; width: 370px !important; }
+
+        /* ── Panel (popup + modal body) ── */
+        .panel { padding: 16px; }
+        .panel-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+        .panel-addr { font-size: 13px; color: var(--text2); margin-bottom: 14px; cursor: pointer; text-decoration: underline; line-height: 1.4; }
+        .panel-addr:hover { color: var(--blue); }
+
+        /* ── Archived ticket history ── */
+        .history-section { margin-bottom: 14px; }
+        .history-header { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .archived-ticket { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; overflow: hidden; }
+        .archived-ticket-header { padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .archived-ticket-header:hover { background: rgba(255,255,255,0.03); }
+        .archived-ticket-label { font-size: 12px; font-weight: 700; color: var(--text2); }
+        .archived-ticket-body { display: none; padding: 10px 12px; border-top: 1px solid var(--border); }
+        .archived-ticket-body.open { display: block; }
+        .archived-field { margin-bottom: 8px; }
+        .archived-field-label { font-size: 10px; color: var(--text2); text-transform: uppercase; margin-bottom: 2px; }
+        .archived-field-value { font-size: 12px; line-height: 1.4; }
+        .archived-note { padding: 6px 0; border-bottom: 1px solid var(--border); }
+        .archived-note:last-child { border-bottom: none; }
+        .archived-note-date { font-size: 10px; color: var(--text2); margin-bottom: 2px; }
+        .archived-note-text { font-size: 12px; line-height: 1.4; }
+        .archived-note-photo img { margin-top: 6px; width: 100%; max-height: 140px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; }
+
+        /* ── Active ticket ── */
+        .active-ticket-section { background: var(--bg3); border: 1px solid var(--blue); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+        .active-ticket-label { font-size: 11px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+
+        /* ── Notes list (saved notes in active ticket) ── */
+        .notes-list { margin-bottom: 10px; }
+        .note-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
+        .note-item-date { font-size: 10px; color: var(--text2); margin-bottom: 3px; }
+        .note-item-text { font-size: 12px; line-height: 1.4; margin-bottom: 4px; }
+        .note-item-photo img { width: 100%; max-height: 140px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; margin-top: 4px; }
+
+        /* ── Add note area ── */
+        .add-note-area { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
+        .add-note-label { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; margin-bottom: 6px; }
+        .add-note-textarea { width: 100%; background: transparent; border: none; color: var(--text); font-family: 'Space Mono', monospace; font-size: 13px; resize: vertical; min-height: 50px; outline: none; }
+        .add-note-photo-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+        .add-note-photo-btn { font-size: 11px; padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text2); cursor: pointer; font-family: 'Space Mono', monospace; }
+        .add-note-photo-btn:hover { border-color: var(--blue); color: var(--blue); }
+        .note-photo-preview { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; }
+        .note-photo-clear { font-size: 11px; color: var(--red); cursor: pointer; background: none; border: none; font-family: 'Space Mono', monospace; }
+        .upload-status { font-size: 11px; color: var(--text2); }
+
+        /* ── Forms ── */
         .form-group { margin-bottom: 12px; }
         .form-label { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 4px; display: block; }
         .form-input, .form-select, .form-textarea { width: 100%; background: var(--bg2); border: 2px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 14px; }
         .form-textarea { min-height: 60px; resize: vertical; }
-        
-        .notes { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin-bottom: 12px; max-height: 150px; overflow-y: auto; }
-        .note { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-        .note:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
-        .note-date { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
-        .note-text { font-size: 13px; line-height: 1.4; }
-        
+
+        /* ── Buttons ── */
         .btn-group { display: flex; gap: 8px; }
         .btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
-        .btn-primary { background: var(--blue); color: white; }
+        .btn-primary   { background: var(--blue); color: #0a0e27; }
         .btn-secondary { background: var(--bg2); color: var(--text); border: 2px solid var(--border); }
-        
-        /* Tight desktop/laptop: shrink sidebar slightly so both still fit side by side */
+        .btn-success   { background: var(--green); color: #0a0e27; }
+        .btn-danger    { background: rgba(255,107,107,0.15); color: var(--red); border: 2px solid var(--red); flex: 0; padding: 10px 14px; }
+        .btn-new-ticket { width: 100%; padding: 12px; border: 2px dashed var(--border); border-radius: 8px; background: transparent; color: var(--text2); font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-bottom: 4px; }
+        .btn-new-ticket:hover { border-color: var(--blue); color: var(--blue); }
+
+        /* ── Divider ── */
+        .section-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+        /* ── Mobile modal ── */
+        .mobile-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
+        .mobile-modal.active { display: flex; }
+        .modal-content { background: var(--bg); border: 2px solid var(--border); border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-close { position: sticky; top: 0; background: var(--bg); padding: 12px; border-bottom: 2px solid var(--border); text-align: right; z-index: 1; }
+        .modal-close button { background: var(--bg2); color: var(--text); border: 2px solid var(--border); padding: 10px 18px; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+        /* ── Scroll to top ── */
+        .scroll-top-btn { display: none; }
+
+        /* ── Responsive ── */
         @media (max-width: 1200px) and (min-width: 700px) {
             .container { grid-template-columns: 1fr 340px; }
             .stat { padding: 8px 4px; }
@@ -97,8 +153,6 @@
             .card-name { font-size: 13px; }
             .card-addr { font-size: 11px; }
         }
-
-        /* Mobile portrait: sidebar only, no map */
         @media (max-width: 699px) and (orientation: portrait) {
             .container { display: block; }
             .map-section { display: none; }
@@ -106,8 +160,6 @@
             .location-column { max-height: none; overflow-y: visible; }
             .scroll-top-btn { display: block; position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; background: var(--blue); color: white; border: none; border-radius: 50%; font-size: 24px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(59,130,246,0.5); z-index: 9999; }
         }
-
-        /* Mobile landscape: map only, no sidebar */
         @media (max-width: 699px) and (orientation: landscape) {
             .container { display: block; }
             .sidebar { display: none; }
@@ -120,13 +172,13 @@
     <div class="container">
         <div class="map-section"><div id="map"></div></div>
         <div class="sidebar">
-            <h2>DPM Camera Tracker v2.6.3</h2>
+            <h2>DPM Camera Tracker v2.7</h2>
             <div class="stats">
-                <div class="stat" onclick="window.scrollToStatus('red')"><div class="stat-num" style="color: var(--red);" id="stat-red">0</div><div class="stat-label">Not Started</div></div>
-                <div class="stat" onclick="window.scrollToStatus('yellow')"><div class="stat-num" style="color: var(--yellow);" id="stat-yellow">0</div><div class="stat-label">In Progress</div></div>
-                <div class="stat" onclick="window.scrollToStatus('darkgreen')"><div class="stat-num" style="color: var(--darkgreen);" id="stat-darkgreen">0</div><div class="stat-label">Done & Unpaid</div></div>
-                <div class="stat" onclick="window.scrollToStatus('green')"><div class="stat-num" style="color: var(--green);" id="stat-green">0</div><div class="stat-label">Done & Paid</div></div>
-                <div class="stat" onclick="window.scrollToStatus('blue')"><div class="stat-num" style="color: var(--blue);" id="stat-blue">0</div><div class="stat-label">No Issues</div></div>
+                <div class="stat" onclick="window.filterByStatus('red')">        <div class="stat-num" style="color:var(--red)"       id="stat-red">0</div>       <div class="stat-label">Not Started</div></div>
+                <div class="stat" onclick="window.filterByStatus('yellow')">     <div class="stat-num" style="color:var(--yellow)"    id="stat-yellow">0</div>    <div class="stat-label">In Progress</div></div>
+                <div class="stat" onclick="window.filterByStatus('darkgreen')">  <div class="stat-num" style="color:var(--darkgreen)" id="stat-darkgreen">0</div> <div class="stat-label">Done &amp; Unpaid</div></div>
+                <div class="stat" onclick="window.filterByStatus('green')">      <div class="stat-num" style="color:var(--green)"     id="stat-green">0</div>     <div class="stat-label">Done &amp; Paid</div></div>
+                <div class="stat" onclick="window.filterByStatus('none')">       <div class="stat-num" style="color:var(--text2)"     id="stat-none">0</div>      <div class="stat-label">No Tickets</div></div>
             </div>
             <div class="location-list" id="list"></div>
         </div>
@@ -134,9 +186,7 @@
 
     <div class="mobile-modal" id="modal">
         <div class="modal-content">
-            <div class="modal-close">
-                <button onclick="window.closeModal()">✕ Close</button>
-            </div>
+            <div class="modal-close"><button onclick="window.closeModal()">✕ Close</button></div>
             <div id="modal-body"></div>
         </div>
     </div>
@@ -146,7 +196,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-        import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+        import { getDatabase, ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
 
         const app = initializeApp({
             apiKey: "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
@@ -160,6 +210,9 @@
         const db = getDatabase(app);
         const IMGBB_API_KEY = 'b733862d15744e2bfaa4329d122f4ba0';
 
+        // ─────────────────────────────────────────
+        // Locations
+        // ─────────────────────────────────────────
         const locs = [
             {n:"DPM Office",a:"520 E NW Hwy, Grapevine, TX 76051",t:32.9418,g:-97.0725,special:true},
             {n:"Bill's Office",a:"615 Judy Lane, Seagoville, TX 75159",t:32.6394,g:-96.5386,special:true},
@@ -214,470 +267,560 @@
             {n:"Scarborough Travel Stop",a:"3298 S Interstate Hwy 35 E, Waxahachie, TX 75165",t:32.3782774,g:-96.7708138}
         ];
 
+        // ─────────────────────────────────────────
+        // Map
+        // ─────────────────────────────────────────
         const map = L.map('map').setView([32.9413343, -97.0731222], 10);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-        
-        // Add water overlay for faint distinction
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20
-        }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:20, attribution:'© OpenStreetMap' }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', { maxZoom:20 }).addTo(map);
 
+        // ─────────────────────────────────────────
+        // State
+        // Firebase structure:
+        //   jobs/{locId}/tickets/{ticketId} = { s, v, issue, notes:[{n,t,photoUrl?}], archived, createdAt }
+        // ─────────────────────────────────────────
         let data = {};
         let markers = {};
-        const draftTimers = {};
-
-        function id(l) { return `${l.t}_${l.g}`.replace(/\./g, '_'); }
-        function draftKey(locationId) { return `cameraTrackerDraft:${locationId}`; }
-        function readDraft(locationId) {
-            try {
-                const raw = localStorage.getItem(draftKey(locationId));
-                return raw ? JSON.parse(raw) : null;
-            } catch(err) {
-                console.error('Draft read error:', err);
-                return null;
-            }
-        }
-        function clearDraft(locationId) {
-            localStorage.removeItem(draftKey(locationId));
-            if(draftTimers[locationId]) {
-                clearTimeout(draftTimers[locationId]);
-                delete draftTimers[locationId];
-            }
-        }
-        function writeDraft(locationId) {
-            const statusEl = document.getElementById(`s-${locationId}`);
-            const visitEl = document.getElementById(`v-${locationId}`);
-            const issueEl = document.getElementById(`i-${locationId}`);
-            const noteEl = document.getElementById(`n-${locationId}`);
-            if (!statusEl || !visitEl || !issueEl || !noteEl) return;
-
-            const draft = {
-                s: statusEl.value,
-                v: visitEl.value,
-                issueDraft: issueEl.value,
-                newNoteDraft: noteEl.value,
-                updatedAt: new Date().toISOString()
-            };
-            // Note: photo (base64) is intentionally excluded from drafts to avoid
-            // exceeding localStorage limits. Photos must be re-selected if the popup
-            // is closed before saving.
-            try {
-                localStorage.setItem(draftKey(locationId), JSON.stringify(draft));
-            } catch(err) {
-                console.warn('Draft write failed (storage full?):', err);
-            }
-        }
-        function queueDraftWrite(locationId) {
-            if(draftTimers[locationId]) clearTimeout(draftTimers[locationId]);
-            draftTimers[locationId] = setTimeout(() => writeDraft(locationId), 300);
-        }
-        function attachDraftListeners(locationId) {
-            const els = [
-                document.getElementById(`s-${locationId}`),
-                document.getElementById(`v-${locationId}`),
-                document.getElementById(`i-${locationId}`),
-                document.getElementById(`n-${locationId}`)
-            ];
-            if(els.some(el => !el)) return;
-            els.forEach(el => {
-                if(el.dataset.draftBound === '1') return;
-                const evt = el.tagName === 'SELECT' ? 'change' : 'input';
-                el.addEventListener(evt, () => queueDraftWrite(locationId));
-                el.dataset.draftBound = '1';
-            });
-        }
-        function color(s, isOffice) { 
-            if(isOffice) return '#a855f7'; // purple for offices
-            return s==='red'?'#ff6b6b':s==='yellow'?'#ffd93d':s==='darkgreen'?'#2d7a4f':s==='green'?'#6bcf7f':'#74b9ff'; 
-        }
-
-        function popup(l) {
-            const i = id(l);
-            const d = data[i] || {s:'blue',v:'',issue:'',notes:[]};
-            const draft = readDraft(i) || {};
-            const photoData = d.photoUrl ?? '';
-            const notesHtml = d.notes && d.notes.length > 0 ? 
-                `<div class="notes">${d.notes.map(n=>`<div class="note"><div class="note-date">${new Date(n.t).toLocaleString()}</div><div class="note-text">${n.n}</div></div>`).join('')}</div>` : '';
-            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}`;
-            return `<div class="popup">
-                <div class="popup-title">${l.n}</div>
-                <div class="popup-addr" onclick="window.open('${mapsUrl}', '_blank')">📍 ${l.a}</div>
-                <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <select class="form-select" id="s-${i}" onchange="window.previewStatus('${i}')">
-                      <option value="blue" ${(draft.s || d.s)==='blue'?'selected':''}>No Issues</option>
-                        <option value="red" ${(draft.s || d.s)==='red'?'selected':''}>Not Started</option>
-                        <option value="yellow" ${(draft.s || d.s)==='yellow'?'selected':''}>In Progress</option>
-                        <option value="darkgreen" ${(draft.s || d.s)==='darkgreen'?'selected':''}>Done & Unpaid</option>
-                        <option value="green" ${(draft.s || d.s)==='green'?'selected':''}>Done & Paid</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Visit Date</label>
-                    <input type="date" class="form-input" id="v-${i}" value="${draft.v ?? d.v ?? ''}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Issue</label>
-                    <textarea class="form-textarea" id="i-${i}">${draft.issueDraft ?? d.issue ?? ''}</textarea>
-                </div>
-                ${notesHtml}
-                <div class="form-group">
-                    <label class="form-label">Add Note</label>
-                    <textarea class="form-textarea" id="n-${i}">${draft.newNoteDraft ?? ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Photo (1 image)</label>
-                    <input type="file" class="form-input" accept="image/*" id="f-${i}" onchange="window.handlePhotoUpload('${i}', this)">
-                    <input type="hidden" id="p-${i}" value="${photoData}">
-                    <div id="img-wrap-${i}" style="margin-top:8px;${photoData ? '' : 'display:none;'}">
-                        <img id="img-${i}" src="${photoData}" alt="Location photo" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px;border:1px solid var(--border);transition:opacity 0.2s;">
-                        <button class="btn btn-secondary" style="margin-top:8px;width:100%;" onclick="window.clearPhoto('${i}')">Remove Photo</button>
-                    </div>
-                </div>
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="window.save('${i}')">Save</button>
-                    <button class="btn btn-secondary" onclick="window.clear('${i}')">Clear</button>
-                </div>
-            </div>`;
-        }
-
-        function addMarkers() {
-            locs.forEach(l => {
-                const i = id(l);
-                
-                if(l.special) {
-                    // Special locations get purple markers, no popup
-                    const m = L.circleMarker([l.t, l.g], {
-                        radius: 10,
-                        fillColor: '#a855f7',
-                        fillOpacity: 1,
-                        color: '#fff',
-                        weight: 2
-                    }).addTo(map);
-                    markers[i] = {m, l};
-                } else {
-                    // Regular locations with status and popup
-                    const d = data[i] || {s:'blue'};
-                    const m = L.circleMarker([l.t, l.g], {
-                        radius: 8,
-                        fillColor: color(d.s),
-                        fillOpacity: 1,
-                        color: '#fff',
-                        weight: 2
-                    }).addTo(map).bindPopup(popup(l), {maxWidth: 350});
-                    m.on('popupopen', () => {
-                        m.setPopupContent(popup(l));
-                        attachDraftListeners(i);
-                    });
-                    markers[i] = {m, l};
-                }
-            });
-        }
-
-        function updateMarker(i) {
-            if(markers[i]) {
-                const d = data[i] || {s:'blue'};
-                markers[i].m.setStyle({fillColor: color(d.s)});
-            }
-        }
-        window.handlePhotoUpload = async function(i, inputEl) {
-            const file = inputEl.files && inputEl.files[0];
-            if(!file) return;
-            if(!file.type.startsWith('image/')) {
-                alert('Please choose an image file.');
-                inputEl.value = '';
-                return;
-            }
-
-            // Show loading state
-            const imgWrap = document.getElementById(`img-wrap-${i}`);
-            const imgEl = document.getElementById(`img-${i}`);
-            const photoEl = document.getElementById(`p-${i}`);
-            imgWrap.style.display = '';
-            imgEl.style.opacity = '0.4';
-            imgEl.src = '';
-            imgWrap.querySelector('button') && (imgWrap.querySelector('button').disabled = true);
-
-            // Show a local preview immediately while uploading
-            const localUrl = URL.createObjectURL(file);
-            imgEl.src = localUrl;
-
-            try {
-                const formData = new FormData();
-                formData.append('image', file);
-
-                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const json = await res.json();
-
-                if(!json.success) throw new Error(json.error?.message || 'Upload failed');
-
-                const url = json.data.url;
-                photoEl.value = url;
-                imgEl.src = url;
-                imgEl.style.opacity = '1';
-                URL.revokeObjectURL(localUrl);
-                queueDraftWrite(i);
-            } catch(err) {
-                imgWrap.style.display = 'none';
-                imgEl.src = '';
-                photoEl.value = '';
-                inputEl.value = '';
-                URL.revokeObjectURL(localUrl);
-                alert('Photo upload failed: ' + err.message);
-            } finally {
-                imgEl.style.opacity = '1';
-                const btn = imgWrap.querySelector('button');
-                if(btn) btn.disabled = false;
-            }
-        };
-
-        window.clearPhoto = function(i) {
-            const photoEl = document.getElementById(`p-${i}`);
-            const fileEl = document.getElementById(`f-${i}`);
-            if(photoEl) photoEl.value = '';
-            if(fileEl) fileEl.value = '';
-            document.getElementById(`img-wrap-${i}`).style.display = 'none';
-            queueDraftWrite(i);
-        };
-
-        window.previewStatus = function(i) {
-            const newStatus = document.getElementById(`s-${i}`).value;
-            if(markers[i]) {
-                markers[i].m.setStyle({fillColor: color(newStatus)});
-            }
-        };
-
-        window.openMobileModal = function(l) {
-            const i = id(l);
-            const modalBody = document.getElementById('modal-body');
-            modalBody.innerHTML = popup(l);
-            attachDraftListeners(i);
-            document.getElementById('modal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        };
-
-        window.closeModal = function() {
-            document.getElementById('modal').classList.remove('active');
-            document.body.style.overflow = '';
-        };
-
-        // Track active filter
         let activeFilter = null;
 
-        window.scrollToStatus = function(status) {
-            const allCards = document.querySelectorAll('.card');
-            
-            // If clicking the same status, toggle filter off (show all)
+        // ─────────────────────────────────────────
+        // Helpers
+        // ─────────────────────────────────────────
+        function locId(l) { return `${l.t}_${l.g}`.replace(/\./g, '_'); }
+        function newTicketId() { return 'tk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
+
+        function statusLabel(s) {
+            return s==='red'?'Not Started':s==='yellow'?'In Progress':s==='darkgreen'?'Done & Unpaid':s==='green'?'Done & Paid':'No Issues';
+        }
+
+        function statusColor(s) {
+            return s==='red'?'#ff6b6b':s==='yellow'?'#ffd93d':s==='darkgreen'?'#2d7a4f':s==='green'?'#6bcf7f':'#74b9ff';
+        }
+
+        function getOpenTicket(locData) {
+            if(!locData?.tickets) return null;
+            return Object.values(locData.tickets).find(t => !t.archived) || null;
+        }
+
+        function getOpenTicketId(locData) {
+            if(!locData?.tickets) return null;
+            return Object.keys(locData.tickets).find(k => !locData.tickets[k].archived) || null;
+        }
+
+        function getSortedTickets(locData) {
+            if(!locData?.tickets) return [];
+            return Object.entries(locData.tickets)
+                .map(([id, t]) => ({id, ...t}))
+                .sort((a, b) => (a.createdAt||'').localeCompare(b.createdAt||''));
+        }
+
+        function getMarkerColor(locData) {
+            const open = getOpenTicket(locData);
+            if(open) return statusColor(open.s || 'blue');
+            if(locData?.tickets && Object.keys(locData.tickets).length > 0) return '#4a5568'; // has history, no open ticket
+            return '#74b9ff'; // no tickets at all
+        }
+
+        // ─────────────────────────────────────────
+        // Migration: v1 flat format → ticket system
+        // Runs once on boot. Safe to re-run (skips already-migrated).
+        // ─────────────────────────────────────────
+        async function migrateIfNeeded() {
+            const snap = await get(ref(db, 'jobs'));
+            const raw = snap.val();
+            if(!raw) return;
+
+            const writes = [];
+            for(const [lid, val] of Object.entries(raw)) {
+                if(!val || val.tickets) continue; // already migrated or empty
+                if(!val.s) continue; // not a recognizable old record
+
+                const tkId = newTicketId();
+                const ticket = {
+                    s: val.s,
+                    v: val.v || '',
+                    issue: val.issue || '',
+                    notes: val.notes || [],
+                    archived: val.s === 'green', // Done & Paid tickets auto-archive
+                    createdAt: new Date().toISOString(),
+                    migratedFrom: 'v1'
+                };
+                // Attach old photo to first note if present
+                if(val.photoUrl) {
+                    if(ticket.notes.length === 0) {
+                        ticket.notes.push({ n: '(photo from previous version)', t: new Date().toISOString(), photoUrl: val.photoUrl });
+                    } else {
+                        ticket.notes[0] = { ...ticket.notes[0], photoUrl: val.photoUrl };
+                    }
+                }
+                writes.push(set(ref(db, `jobs/${lid}/tickets/${tkId}`), ticket));
+            }
+            if(writes.length > 0) {
+                await Promise.all(writes);
+                console.log(`v2.7 migration: converted ${writes.length} location(s).`);
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // Stats
+        // ─────────────────────────────────────────
+        function updateStats() {
+            const counts = { red:0, yellow:0, darkgreen:0, green:0, none:0 };
+            locs.forEach(l => {
+                if(l.special) return;
+                const open = getOpenTicket(data[locId(l)]);
+                if(!open) { counts.none++; return; }
+                const s = open.s || 'blue';
+                if(s === 'blue') counts.none++;
+                else counts[s] = (counts[s] || 0) + 1;
+            });
+            document.getElementById('stat-red').textContent       = counts.red;
+            document.getElementById('stat-yellow').textContent    = counts.yellow;
+            document.getElementById('stat-darkgreen').textContent = counts.darkgreen;
+            document.getElementById('stat-green').textContent     = counts.green;
+            document.getElementById('stat-none').textContent      = counts.none;
+        }
+
+        // ─────────────────────────────────────────
+        // Filter
+        // ─────────────────────────────────────────
+        window.filterByStatus = function(status) {
             if(activeFilter === status) {
                 activeFilter = null;
-                allCards.forEach(card => {
-                    card.style.display = '';
-                });
-                // Reset stat button styling
+                document.querySelectorAll('.card').forEach(c => c.style.display = '');
                 document.querySelectorAll('.stat').forEach(s => s.style.opacity = '1');
                 return;
             }
-            
-            // Set new filter
             activeFilter = status;
-            
-            // Hide all cards that don't match the status
-            allCards.forEach(card => {
-                const cardStatus = card.getAttribute('data-status');
-                if(cardStatus === status) {
-                    card.style.display = '';
-                } else {
-                    card.style.display = 'none';
-                }
+            document.querySelectorAll('.card').forEach(card => {
+                card.style.display = (card.dataset.filterStatus === status) ? '' : 'none';
             });
-            
-            // Dim other stat buttons
             document.querySelectorAll('.stat').forEach(s => s.style.opacity = '0.3');
-            // Highlight active stat button
-            const statButtons = document.querySelectorAll('.stat');
-            const statusMap = {red: 0, yellow: 1, darkgreen: 2, green: 3, blue: 4};
-            statButtons[statusMap[status]].style.opacity = '1';
+            const idx = {red:0, yellow:1, darkgreen:2, green:3, none:4};
+            if(idx[status] !== undefined) document.querySelectorAll('.stat')[idx[status]].style.opacity = '1';
         };
 
-        window.scrollToTop = function() {
-            const sidebar = document.querySelector('.sidebar');
-            if(sidebar) {
-                sidebar.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        };
-
-        function updateStats() {
-            const stats = {red:0, yellow:0, darkgreen:0, green:0, blue:0};
-            Object.values(data).forEach(d => stats[d.s]++);
-            locs.forEach(l => { 
-                if(!l.special && !data[id(l)]) stats.blue++; 
-            });
-            document.getElementById('stat-red').textContent = stats.red;
-            document.getElementById('stat-yellow').textContent = stats.yellow;
-            document.getElementById('stat-darkgreen').textContent = stats.darkgreen;
-            document.getElementById('stat-green').textContent = stats.green;
-            document.getElementById('stat-blue').textContent = stats.blue;
-        }
-
+        // ─────────────────────────────────────────
+        // Sidebar list
+        // ─────────────────────────────────────────
         function renderList() {
-            const ff = [], cs = [], specialFF = [], specialCS = [];
+            const ff=[], cs=[], specialFF=[], specialCS=[];
             locs.forEach(l => {
                 if(l.special) {
-                    // Special locations go to their respective columns
-                    if(l.n.includes('DPM')) specialFF.push(l);
-                    else if(l.n.includes('Bill')) specialCS.push(l);
+                    (l.n.includes('DPM') ? specialFF : specialCS).push(l);
                 } else if(l.n.includes('Burger King') || l.n.includes('Subway')) {
                     ff.push(l);
                 } else {
                     cs.push(l);
                 }
             });
-            
-            // Sort Fast Food alphabetically by city name (strip prefixes)
-            ff.sort((a, b) => {
-                const cleanName = n => {
-                    let name = n.replace('Burger King ', '').replace('Subway ', '');
-                    // Handle "The Colony" -> "Colony"
-                    if(name.startsWith('The ')) name = name.substring(4);
-                    return name;
-                };
-                return cleanName(a.n).localeCompare(cleanName(b.n));
+
+            ff.sort((a,b) => {
+                const clean = n => { let x=n.replace('Burger King ','').replace('Subway ',''); if(x.startsWith('The ')) x=x.substring(4); return x; };
+                return clean(a.n).localeCompare(clean(b.n));
             });
-            
             cs.sort((a,b) => {
-                const gn = n => { const m = n.match(/Paradise QS #(\d+)/); return m ? parseInt(m[1]) : null; };
-                const an = gn(a.n), bn = gn(b.n);
-                if(an !== null && bn !== null) return an - bn;
-                if(an !== null) return -1;
-                if(bn !== null) return 1;
+                const gn = n => { const m=n.match(/Paradise QS #(\d+)/); return m?parseInt(m[1]):null; };
+                const an=gn(a.n), bn=gn(b.n);
+                if(an!==null && bn!==null) return an-bn;
+                if(an!==null) return -1; if(bn!==null) return 1;
                 return a.n.localeCompare(b.n);
             });
 
             const mkCard = l => {
-                const i = id(l);
+                const lid = locId(l);
                 const c = document.createElement('div');
                 c.className = 'card';
-                
+
                 if(l.special) {
-                    // Special location - no status, just name and address link
-                    c.innerHTML = `<div class="card-name" style="color: var(--purple);">📍 ${l.n}</div><div class="card-addr" style="cursor: pointer; text-decoration: underline;" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}', '_blank')">${l.a}</div>`;
+                    c.innerHTML = `<div class="card-name" style="color:var(--purple);">📍 ${l.n}</div><div class="card-addr" style="cursor:pointer;text-decoration:underline;" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}','_blank')">${l.a}</div>`;
                     c.style.borderColor = 'var(--purple)';
-                    c.onclick = () => {
-                        map.setView([l.t, l.g], 15);
-                    };
-                } else {
-                    // Regular location with status
-                    const d = data[i] || {s:'blue'};
-                    c.setAttribute('data-status', d.s);
-                    c.setAttribute('data-location-id', i);
-                    const statusText = d.s==='red'?'Not Started':d.s==='yellow'?'In Progress':d.s==='darkgreen'?'Done & Unpaid':d.s==='green'?'Done & Paid':'No Issues';
-                    c.innerHTML = `<div class="card-name">${l.n}</div><div class="card-addr">${l.a}</div><span class="card-status status-${d.s}">${statusText}</span>`;
-                    c.onclick = () => {
-                        if(window.innerWidth <= 699) {
-                            window.openMobileModal(l);
-                        } else {
-                            map.setView([l.t, l.g], 13);
-                            setTimeout(() => markers[i].m.openPopup(), 100);
-                        }
-                    };
+                    c.onclick = () => map.setView([l.t, l.g], 15);
+                    return c;
                 }
+
+                const d = data[lid];
+                const open = getOpenTicket(d);
+                const all = getSortedTickets(d);
+                const archivedCount = all.filter(t => t.archived).length;
+
+                // Filter status for stat-bar filtering
+                let filterStatus = 'none';
+                if(open && open.s && open.s !== 'blue') filterStatus = open.s;
+                c.dataset.filterStatus = filterStatus;
+
+                // Card border reflects open ticket status
+                c.style.borderColor = open ? statusColor(open.s || 'blue') : 'var(--border)';
+
+                // Badge row
+                let metaHtml = '';
+                if(open) {
+                    metaHtml = `<span class="badge-status status-${open.s}">${statusLabel(open.s)}</span>`;
+                    if(archivedCount > 0) {
+                        metaHtml += `<span class="ticket-badge badge-none" style="font-size:10px;">+${archivedCount} archived</span>`;
+                    }
+                } else if(all.length > 0) {
+                    metaHtml = `<span class="ticket-badge badge-none">${archivedCount} archived</span>`;
+                } else {
+                    metaHtml = `<span class="ticket-badge badge-none">No tickets</span>`;
+                }
+
+                c.innerHTML = `<div class="card-name">${l.n}</div><div class="card-addr">${l.a}</div><div class="card-meta">${metaHtml}</div>`;
+                c.onclick = () => {
+                    if(window.innerWidth <= 699) {
+                        openMobilePanel(l);
+                    } else {
+                        map.setView([l.t, l.g], 13);
+                        setTimeout(() => markers[lid]?.m.openPopup(), 100);
+                    }
+                };
                 return c;
             };
 
             const list = document.getElementById('list');
             list.innerHTML = '';
+
             const c1 = document.createElement('div');
             c1.className = 'location-column';
             c1.innerHTML = '<div class="column-header">Fast Food</div>';
             specialFF.forEach(l => c1.appendChild(mkCard(l)));
             ff.forEach(l => c1.appendChild(mkCard(l)));
-            
+
             const c2 = document.createElement('div');
             c2.className = 'location-column';
             c2.innerHTML = '<div class="column-header">C-Store</div>';
             specialCS.forEach(l => c2.appendChild(mkCard(l)));
             cs.forEach(l => c2.appendChild(mkCard(l)));
-            
+
             list.appendChild(c1);
             list.appendChild(c2);
-        }
 
-        window.save = function(i) {
-            console.log('Save clicked for:', i);
-            try {
-                const notes = data[i]?.notes || [];
-                const newNote = document.getElementById(`n-${i}`).value.trim();
-                if(newNote) {
-                    notes.push({n: newNote, t: new Date().toISOString()});
-                    console.log('Added note:', newNote);
-                }
-                
-                const photoEl = document.getElementById(`p-${i}`);
-                const saveData = {
-                    s: document.getElementById(`s-${i}`).value,
-                    v: document.getElementById(`v-${i}`).value,
-                    issue: document.getElementById(`i-${i}`).value,
-                    notes: notes,
-                    photoUrl: (photoEl && photoEl.value) ? photoEl.value : (data[i]?.photoUrl ?? null)
-                };
-                // Remove null photoUrl to keep Firebase clean
-                if(!saveData.photoUrl) delete saveData.photoUrl;
-                
-                console.log('Saving data:', saveData);
-                
-                set(ref(db, 'jobs/' + i), saveData)
-                    .then(() => {
-                        console.log('Save successful!');
-                        data[i] = saveData;
-                        updateMarker(i);
-                        updateStats();
-                        renderList();
-                        if(markers[i]) markers[i].m.closePopup();
-                        window.closeModal();
-                        alert('✓ Saved!');
-                    })
-                    .catch(err => {
-                        console.error('Save error:', err);
-                        alert('Error saving: ' + err.message);
-                    });
-            } catch(err) {
-                console.error('Save function error:', err);
-                alert('Error: ' + err.message);
-            }
-        };
-
-        window.clear = function(i) {
-            if(confirm('Clear all data?')) {
-                set(ref(db, 'jobs/' + i), null).then(() => {
-                    delete data[i];
-                    clearDraft(i);
-                    updateMarker(i);
-                    updateStats();
-                    renderList();
-                    markers[i].m.setPopupContent(popup(markers[i].l));
-                    alert('✓ Cleared!');
-                }).catch(err => {
-                    alert('Error: ' + err.message);
+            // Reapply active filter
+            if(activeFilter) {
+                document.querySelectorAll('.card').forEach(card => {
+                    card.style.display = (card.dataset.filterStatus === activeFilter) ? '' : 'none';
                 });
             }
+        }
+
+        // ─────────────────────────────────────────
+        // Build panel HTML
+        // ─────────────────────────────────────────
+        function buildPanel(l) {
+            const lid = locId(l);
+            const d = data[lid];
+            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}`;
+            const all = getSortedTickets(d);
+            const archived = all.filter(t => t.archived);
+            const open = all.find(t => !t.archived) || null;
+            const openId = open ? open.id : null;
+
+            let html = `<div class="panel">
+                <div class="panel-title">${l.n}</div>
+                <div class="panel-addr" onclick="window.open('${mapsUrl}','_blank')">📍 ${l.a}</div>`;
+
+            // ── Archived history ──
+            if(archived.length > 0) {
+                html += `<div class="history-section">
+                    <div class="history-header">📁 Ticket History (${archived.length})</div>`;
+
+                archived.forEach((t, idx) => {
+                    const displayNum = idx + 1;
+                    const displayDate = t.v || (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'No date');
+                    const notes = t.notes || [];
+
+                    let notesHtml = notes.map(n => `
+                        <div class="archived-note">
+                            <div class="archived-note-date">${new Date(n.t).toLocaleString()}</div>
+                            ${n.n ? `<div class="archived-note-text">${n.n}</div>` : ''}
+                            ${n.photoUrl ? `<div class="archived-note-photo"><img src="${n.photoUrl}" onclick="window.open('${n.photoUrl}','_blank')" title="Click to open full size"></div>` : ''}
+                        </div>`).join('');
+
+                    html += `<div class="archived-ticket">
+                        <div class="archived-ticket-header" onclick="this.nextElementSibling.classList.toggle('open')">
+                            <span class="archived-ticket-label">Ticket #${displayNum} — ${displayDate}</span>
+                            <span class="badge-status status-${t.s}" style="font-size:10px;">${statusLabel(t.s)}</span>
+                        </div>
+                        <div class="archived-ticket-body">
+                            ${t.issue ? `<div class="archived-field"><div class="archived-field-label">Issue</div><div class="archived-field-value">${t.issue}</div></div>` : ''}
+                            ${notesHtml ? `<div class="archived-field"><div class="archived-field-label">Notes</div>${notesHtml}</div>` : ''}
+                            ${!t.issue && !notesHtml ? `<div style="color:var(--text2);font-size:12px;">No details recorded.</div>` : ''}
+                        </div>
+                    </div>`;
+                });
+
+                html += `</div><hr class="section-divider">`;
+            }
+
+            // ── Active ticket ──
+            if(open) {
+                const notes = open.notes || [];
+                const notesListHtml = notes.map(n => `
+                    <div class="note-item">
+                        <div class="note-item-date">${new Date(n.t).toLocaleString()}</div>
+                        ${n.n ? `<div class="note-item-text">${n.n}</div>` : ''}
+                        ${n.photoUrl ? `<div class="note-item-photo"><img src="${n.photoUrl}" onclick="window.open('${n.photoUrl}','_blank')" title="Click for full size"></div>` : ''}
+                    </div>`).join('');
+
+                html += `<div class="active-ticket-section">
+                    <div class="active-ticket-label">🎫 Active Ticket</div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="tk-s-${lid}" onchange="window.previewStatus('${lid}')">
+                            <option value="blue"      ${open.s==='blue'?      'selected':''}>No Issues</option>
+                            <option value="red"       ${open.s==='red'?       'selected':''}>Not Started</option>
+                            <option value="yellow"    ${open.s==='yellow'?    'selected':''}>In Progress</option>
+                            <option value="darkgreen" ${open.s==='darkgreen'? 'selected':''}>Done &amp; Unpaid</option>
+                            <option value="green"     ${open.s==='green'?     'selected':''}>Done &amp; Paid</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Visit Date</label>
+                        <input type="date" class="form-input" id="tk-v-${lid}" value="${open.v || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Issue Description</label>
+                        <textarea class="form-textarea" id="tk-i-${lid}">${open.issue || ''}</textarea>
+                    </div>
+                    ${notesListHtml ? `<div class="form-label" style="margin-bottom:6px;">Notes</div><div class="notes-list">${notesListHtml}</div>` : ''}
+                    <div class="add-note-area">
+                        <div class="add-note-label">Add Note</div>
+                        <textarea class="add-note-textarea" id="tk-n-${lid}" placeholder="Type a note..."></textarea>
+                        <div class="add-note-photo-row">
+                            <input type="file" accept="image/*" id="tk-f-${lid}" style="display:none" onchange="window.handleNotePhoto('${lid}','${openId}',this)">
+                            <button class="add-note-photo-btn" onclick="document.getElementById('tk-f-${lid}').click()">📎 Attach Photo</button>
+                            <span class="upload-status" id="tk-upload-${lid}"></span>
+                            <img id="tk-img-${lid}" style="display:none" class="note-photo-preview" onclick="window.open(this.src,'_blank')">
+                            <button class="note-photo-clear" id="tk-imgclear-${lid}" style="display:none" onclick="window.clearNotePhoto('${lid}')">✕ remove</button>
+                            <input type="hidden" id="tk-p-${lid}" value="">
+                        </div>
+                    </div>
+                    <div class="btn-group" style="margin-top:10px;">
+                        <button class="btn btn-primary"   onclick="window.saveTicket('${lid}','${openId}')">💾 Save</button>
+                        <button class="btn btn-success"   onclick="window.archiveTicket('${lid}','${openId}')">✓ Close Ticket</button>
+                        <button class="btn btn-danger"    onclick="window.deleteTicket('${lid}','${openId}')">🗑</button>
+                    </div>
+                </div>`;
+            } else {
+                html += `<button class="btn-new-ticket" onclick="window.createTicket('${lid}')">＋ Open New Ticket</button>`;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        // ─────────────────────────────────────────
+        // Markers
+        // ─────────────────────────────────────────
+        function addMarkers() {
+            locs.forEach(l => {
+                const lid = locId(l);
+                if(l.special) {
+                    const m = L.circleMarker([l.t, l.g], { radius:10, fillColor:'#a855f7', fillOpacity:1, color:'#fff', weight:2 }).addTo(map);
+                    markers[lid] = {m, l};
+                } else {
+                    const m = L.circleMarker([l.t, l.g], {
+                        radius:8, fillColor: getMarkerColor(data[lid]), fillOpacity:1, color:'#fff', weight:2
+                    }).addTo(map).bindPopup('', {maxWidth:390});
+                    m.on('popupopen', () => m.setPopupContent(buildPanel(l)));
+                    markers[lid] = {m, l};
+                }
+            });
+        }
+
+        function updateMarker(lid) {
+            if(markers[lid] && !markers[lid].l.special) {
+                markers[lid].m.setStyle({ fillColor: getMarkerColor(data[lid]) });
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // Ticket actions
+        // ─────────────────────────────────────────
+        window.previewStatus = function(lid) {
+            const el = document.getElementById(`tk-s-${lid}`);
+            if(el && markers[lid]) markers[lid].m.setStyle({ fillColor: statusColor(el.value) });
         };
 
+        window.saveTicket = async function(lid, tkId) {
+            try {
+                const existing = data[lid]?.tickets?.[tkId] || {};
+                const notes = [...(existing.notes || [])];
+
+                const noteText = document.getElementById(`tk-n-${lid}`)?.value.trim() || '';
+                const photoUrl = document.getElementById(`tk-p-${lid}`)?.value || '';
+                if(noteText || photoUrl) {
+                    const newNote = { n: noteText, t: new Date().toISOString() };
+                    if(photoUrl) newNote.photoUrl = photoUrl;
+                    notes.push(newNote);
+                }
+
+                const updated = {
+                    ...existing,
+                    s:     document.getElementById(`tk-s-${lid}`).value,
+                    v:     document.getElementById(`tk-v-${lid}`).value,
+                    issue: document.getElementById(`tk-i-${lid}`).value,
+                    notes
+                };
+
+                await set(ref(db, `jobs/${lid}/tickets/${tkId}`), updated);
+                alert('✓ Saved!');
+            } catch(err) {
+                alert('Error saving: ' + err.message);
+            }
+        };
+
+        window.archiveTicket = async function(lid, tkId) {
+            if(!confirm('Close and archive this ticket? It will remain visible in the ticket history.')) return;
+            try {
+                const existing = data[lid]?.tickets?.[tkId] || {};
+                const notes = [...(existing.notes || [])];
+                const noteText = document.getElementById(`tk-n-${lid}`)?.value.trim() || '';
+                const photoUrl = document.getElementById(`tk-p-${lid}`)?.value || '';
+                if(noteText || photoUrl) {
+                    const newNote = { n: noteText, t: new Date().toISOString() };
+                    if(photoUrl) newNote.photoUrl = photoUrl;
+                    notes.push(newNote);
+                }
+                const updated = {
+                    ...existing,
+                    s:          document.getElementById(`tk-s-${lid}`)?.value  || existing.s,
+                    v:          document.getElementById(`tk-v-${lid}`)?.value  || existing.v,
+                    issue:      document.getElementById(`tk-i-${lid}`)?.value  || existing.issue,
+                    notes,
+                    archived:   true,
+                    archivedAt: new Date().toISOString()
+                };
+                await set(ref(db, `jobs/${lid}/tickets/${tkId}`), updated);
+                markers[lid]?.m.closePopup();
+                window.closeModal();
+            } catch(err) {
+                alert('Error closing ticket: ' + err.message);
+            }
+        };
+
+        window.deleteTicket = async function(lid, tkId) {
+            if(!confirm('Permanently delete this ticket? This cannot be undone.')) return;
+            try {
+                await set(ref(db, `jobs/${lid}/tickets/${tkId}`), null);
+                markers[lid]?.m.closePopup();
+                window.closeModal();
+            } catch(err) {
+                alert('Error deleting: ' + err.message);
+            }
+        };
+
+        window.createTicket = async function(lid) {
+            try {
+                const tkId = newTicketId();
+                const ticket = { s:'red', v:'', issue:'', notes:[], archived:false, createdAt: new Date().toISOString() };
+                await set(ref(db, `jobs/${lid}/tickets/${tkId}`), ticket);
+            } catch(err) {
+                alert('Error creating ticket: ' + err.message);
+            }
+        };
+
+        // ─────────────────────────────────────────
+        // Per-note photo upload (imgbb)
+        // ─────────────────────────────────────────
+        window.handleNotePhoto = async function(lid, tkId, inputEl) {
+            const file = inputEl.files?.[0];
+            if(!file) return;
+            if(!file.type.startsWith('image/')) { alert('Please choose an image file.'); inputEl.value=''; return; }
+
+            const statusEl  = document.getElementById(`tk-upload-${lid}`);
+            const imgEl     = document.getElementById(`tk-img-${lid}`);
+            const hiddenEl  = document.getElementById(`tk-p-${lid}`);
+            const clearBtn  = document.getElementById(`tk-imgclear-${lid}`);
+
+            statusEl.textContent = 'Uploading…';
+            const localUrl = URL.createObjectURL(file);
+            imgEl.src = localUrl;
+            imgEl.style.display = '';
+            imgEl.style.opacity = '0.5';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                const res  = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method:'POST', body:formData });
+                const json = await res.json();
+                if(!json.success) throw new Error(json.error?.message || 'Upload failed');
+
+                hiddenEl.value       = json.data.url;
+                imgEl.src            = json.data.url;
+                imgEl.style.opacity  = '1';
+                clearBtn.style.display = '';
+                statusEl.textContent = '✓ Ready';
+                URL.revokeObjectURL(localUrl);
+            } catch(err) {
+                imgEl.style.display  = 'none';
+                hiddenEl.value       = '';
+                inputEl.value        = '';
+                statusEl.textContent = '';
+                URL.revokeObjectURL(localUrl);
+                alert('Photo upload failed: ' + err.message);
+            }
+        };
+
+        window.clearNotePhoto = function(lid) {
+            document.getElementById(`tk-p-${lid}`).value          = '';
+            document.getElementById(`tk-img-${lid}`).style.display = 'none';
+            document.getElementById(`tk-imgclear-${lid}`).style.display = 'none';
+            document.getElementById(`tk-upload-${lid}`).textContent = '';
+            const f = document.getElementById(`tk-f-${lid}`);
+            if(f) f.value = '';
+        };
+
+        // ─────────────────────────────────────────
+        // Mobile modal
+        // ─────────────────────────────────────────
+        function openMobilePanel(l) {
+            document.getElementById('modal-body').innerHTML = buildPanel(l);
+            document.getElementById('modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        window.closeModal = function() {
+            document.getElementById('modal').classList.remove('active');
+            document.body.style.overflow = '';
+        };
+
+        window.scrollToTop = function() {
+            document.querySelector('.sidebar')?.scrollTo({ top:0, behavior:'smooth' });
+        };
+
+        // ─────────────────────────────────────────
+        // Firebase real-time listener
+        // ─────────────────────────────────────────
         onValue(ref(db, 'jobs'), snap => {
             data = snap.val() || {};
             Object.keys(markers).forEach(updateMarker);
             updateStats();
             renderList();
+
+            // Refresh any open popup
+            Object.values(markers).forEach(mk => {
+                if(mk.m.isPopupOpen()) mk.m.setPopupContent(buildPanel(mk.l));
+            });
+
+            // Refresh mobile modal if open
+            const modal = document.getElementById('modal');
+            if(modal.classList.contains('active')) {
+                const title = modal.querySelector('.panel-title')?.textContent;
+                const l = title ? locs.find(x => x.n === title) : null;
+                if(l) document.getElementById('modal-body').innerHTML = buildPanel(l);
+            }
         });
 
-        addMarkers();
-        updateStats();
-        renderList();
+        // ─────────────────────────────────────────
+        // Boot
+        // ─────────────────────────────────────────
+        (async () => {
+            await migrateIfNeeded();
+            addMarkers();
+            updateStats();
+            renderList();
+        })();
     </script>
 </body>
 </html>
