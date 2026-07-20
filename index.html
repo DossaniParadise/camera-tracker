@@ -1,833 +1,719 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>DPM Camera Tracker v2.8</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --bg: #0a0e27;
-            --bg2: #1a2140;
-            --bg3: #111830;
-            --red: #ff6b6b;
-            --yellow: #ffd93d;
-            --green: #6bcf7f;
-            --darkgreen: #2d7a4f;
-            --blue: #74b9ff;
-            --purple: #a855f7;
-            --text: #ffffff;
-            --text2: #cbd5e1;
-            --border: #2d3a5f;
-        }
-        body { font-family: 'Space Mono', monospace; background: var(--bg); color: var(--text); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>Bill Scherzer — Job Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0e27;--bg2:#1a2140;--bg3:#111830;
+    --red:#ff6b6b;--yellow:#ffd93d;--darkgreen:#2d7a4f;--dg-text:#9fe3b8;--green:#6bcf7f;--blue:#74b9ff;
+    --text:#fff;--text2:#cbd5e1;--border:#2d3a5f;
+  }
+  body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--text)}
+  .sidebar{background:var(--bg);min-height:100vh;padding:20px;max-width:900px;margin:0 auto}
+  h1{font-size:18px;margin-bottom:2px}
+  .sub{font-size:11px;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px}
+  .poll{font-size:10px;color:var(--text2);float:right}
 
-        .container { display: grid; grid-template-columns: 1fr 500px; height: 100vh; }
-        .map-section { position: relative; }
-        #map { width: 100%; height: 100%; filter: brightness(0.9); }
+  /* Section headers */
+  .section-head{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;padding:6px 0 10px;border-bottom:2px solid var(--border);margin:20px 0 12px}
+  .section-head:first-child{margin-top:0}
 
-        .sidebar { background: var(--bg); overflow-y: auto; padding: 20px; }
-        .sidebar::-webkit-scrollbar { width: 0; height: 0; }
-        .sidebar { scrollbar-width: none; -ms-overflow-style: none; }
-        .sidebar h2 { font-size: 18px; margin-bottom: 20px; }
+  /* Stats bar */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+  .stat{background:var(--bg2);padding:12px 6px;border-radius:8px;text-align:center;border:1px solid var(--border);cursor:pointer;transition:all .2s;min-width:0;overflow:hidden}
+  .stat:hover{transform:translateY(-2px);border-color:var(--blue)}
+  .stat.active{border-color:var(--blue)}
+  .stat-num{font-size:24px;font-weight:700;line-height:1.1}
+  .stat-label{font-size:9px;color:var(--text2);text-transform:uppercase;margin-top:4px;line-height:1.2;word-break:break-word}
 
-        /* ── Stats bar ── */
-        .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat { background: var(--bg2); padding: 12px; border-radius: 8px; text-align: center; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
-        .stat:hover { transform: translateY(-2px); border-color: var(--blue); }
-        .stat:active { transform: translateY(0); }
-        .stat-num { font-size: 24px; font-weight: 700; }
-        .stat-label { font-size: 9px; color: var(--text2); text-transform: uppercase; margin-top: 4px; }
+  /* Controls */
+  .controls-bar{display:flex;gap:8px;margin-bottom:14px}
+  .search-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Space Mono',monospace;font-size:13px;outline:none}
+  .search-input:focus{border-color:var(--blue)}
+  .search-input::placeholder{color:var(--text2)}
 
-        /* ── Location columns ── */
-        .location-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .location-column { display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 250px); overflow-y: auto; }
-        .location-column::-webkit-scrollbar { width: 0; height: 0; }
-        .location-column { scrollbar-width: none; -ms-overflow-style: none; }
-        .column-header { font-size: 12px; font-weight: 700; color: var(--text2); padding: 8px 0; border-bottom: 2px solid var(--border); margin-bottom: 4px; }
+  /* Cards */
+  .card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+  .card{background:var(--bg2);border:2px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:all .2s}
+  .card:hover{border-color:var(--blue);transform:translateY(-1px)}
+  .card-name{font-size:14px;font-weight:700;margin-bottom:4px;line-height:1.3;overflow-wrap:anywhere}
+  .card-sub{font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.4;overflow-wrap:anywhere}
+  .card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .empty{text-align:center;color:var(--text2);font-size:13px;padding:24px 0}
 
-        /* ── Location cards ── */
-        .card { background: var(--bg2); border: 2px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; }
-        .card:hover { border-color: var(--blue); transform: translateY(-1px); }
-        .card-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
-        .card-addr { font-size: 12px; color: var(--text2); margin-bottom: 8px; line-height: 1.4; }
-        .card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .ticket-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; }
-        .badge-open { background: rgba(116,185,255,0.15); color: var(--blue); border: 1px solid var(--blue); }
-        .badge-none { background: rgba(45,58,95,0.4); color: var(--text2); border: 1px solid var(--border); }
-        .badge-status { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; }
-        .status-red       { background: rgba(255,107,107,0.2);  color: var(--red);       border: 1px solid var(--red); }
-        .status-yellow    { background: rgba(255,217,61,0.2);   color: var(--yellow);    border: 1px solid var(--yellow); }
-        .status-darkgreen { background: rgba(45,122,79,0.2);    color: var(--darkgreen); border: 1px solid var(--darkgreen); }
-        .status-green     { background: rgba(107,207,127,0.2);  color: var(--green);     border: 1px solid var(--green); }
-        .status-blue      { background: rgba(116,185,255,0.2);  color: var(--blue);      border: 1px solid var(--blue); }
-        .status-purple    { background: rgba(168,85,247,0.2);   color: var(--purple);    border: 1px solid var(--purple); }
+  /* Badges */
+  .badge{display:inline-block;padding:3px 9px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap}
+  /* Camera statuses */
+  .s-red     {background:rgba(255,107,107,.18);color:var(--red);    border:1px solid var(--red)}
+  .s-yellow  {background:rgba(255,217,61,.18); color:var(--yellow); border:1px solid var(--yellow)}
+  .s-darkgreen{background:rgba(45,122,79,.25); color:var(--dg-text);border:1px solid var(--darkgreen)}
+  .s-green   {background:rgba(107,207,127,.18);color:var(--green);  border:1px solid var(--green)}
+  .s-none    {background:rgba(45,58,95,.4);    color:var(--text2);  border:1px solid var(--border)}
+  /* Repair app statuses */
+  .s-dispatched  {background:rgba(255,107,107,.18);color:var(--red);    border:1px solid var(--red)}
+  .s-in_progress {background:rgba(255,217,61,.18); color:var(--yellow); border:1px solid var(--yellow)}
+  .s-finished    {background:rgba(45,122,79,.25);  color:var(--dg-text);border:1px solid var(--darkgreen)}
+  .s-closed      {background:rgba(107,207,127,.18);color:var(--green);  border:1px solid var(--green)}
+  .s-waiting     {background:rgba(116,185,255,.15);color:var(--blue);   border:1px solid var(--blue)}
+  .s-other       {background:rgba(45,58,95,.4);    color:var(--text2);  border:1px solid var(--border)}
 
-        /* ── Leaflet popup ── */
-        .leaflet-popup-content-wrapper { background: var(--bg); color: var(--text); border: 2px solid var(--border); border-radius: 12px; font-family: 'Space Mono', monospace; }
-        .leaflet-popup-content { margin: 0; width: 370px !important; }
+  /* Modal */
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;align-items:flex-start;justify-content:center;padding:0;overflow:auto;-webkit-overflow-scrolling:touch}
+  .modal.on{display:flex}
+  .sheet{background:var(--bg);border:1px solid var(--border);border-radius:12px;max-width:620px;width:100%;margin:18px;min-height:min-content}
+  @media(max-width:699px){.sheet{margin:0;border-radius:0;min-height:100dvh}}
+  .sheet-h{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:14px;display:flex;justify-content:space-between;align-items:center;z-index:1;gap:10px}
+  .sheet-h h2{font-size:15px;overflow-wrap:anywhere}
+  .x{background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 14px;font-family:inherit;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+  .sheet-b{padding:14px}
+  .fl{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px}
+  .fl:first-child{margin-top:0}
+  .val{font-size:13px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
 
-        /* ── Panel (popup + modal body) ── */
-        .panel { padding: 16px; }
-        .panel-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
-        .panel-addr { font-size: 13px; color: var(--text2); margin-bottom: 14px; cursor: pointer; text-decoration: underline; line-height: 1.4; }
-        .panel-addr:hover { color: var(--blue); }
+  /* Status buttons */
+  .status-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .status-btn{flex:1 1 calc(50% - 8px);min-width:110px;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg2);color:var(--text);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:.15s}
+  .status-btn:hover{filter:brightness(1.15)}
+  .status-btn.cur{border-color:currentColor}
+  .status-btn.b-red{color:var(--red)}         .status-btn.b-yellow{color:var(--yellow)}
+  .status-btn.b-darkgreen{color:var(--dg-text)} .status-btn.b-green{color:var(--green)}
+  .status-btn.b-dispatched{color:var(--red)}  .status-btn.b-in_progress{color:var(--yellow)}
+  .status-btn.b-finished{color:var(--dg-text)} .status-btn.b-closed{color:var(--green)}
 
-        /* ── Archived ticket history ── */
-        .history-section { margin-bottom: 14px; }
-        .history-header { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-        .archived-ticket { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; overflow: hidden; }
-        .archived-ticket-header { padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .archived-ticket-header:hover { background: rgba(255,255,255,0.03); }
-        .archived-ticket-label { font-size: 12px; font-weight: 700; color: var(--text2); }
-        .archived-ticket-body { display: none; padding: 10px 12px; border-top: 1px solid var(--border); }
-        .archived-ticket-body.open { display: block; }
-        .archived-field { margin-bottom: 8px; }
-        .archived-field-label { font-size: 10px; color: var(--text2); text-transform: uppercase; margin-bottom: 2px; }
-        .archived-field-value { font-size: 12px; line-height: 1.4; }
-        .archived-note { padding: 6px 0; border-bottom: 1px solid var(--border); }
-        .archived-note:last-child { border-bottom: none; }
-        .archived-note-date { font-size: 10px; color: var(--text2); margin-bottom: 2px; }
-        .archived-note-text { font-size: 12px; line-height: 1.4; }
-        .archived-note-photo img { margin-top: 6px; width: 100%; max-height: 140px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; }
+  /* Archived history */
+  .archived-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden}
+  .archived-hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;font-size:12px;flex-wrap:wrap}
+  .archived-hdr:hover{background:rgba(255,255,255,.03)}
+  .archived-body{display:none;padding:4px 11px 11px}
+  .archived-body.open{display:block}
 
-        /* ── Active ticket ── */
-        .active-ticket-section { background: var(--bg3); border: 1px solid var(--blue); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
-        .active-ticket-label { font-size: 11px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+  /* Notes */
+  .notes{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .note{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+  .note-meta{font-size:10px;color:var(--text2);margin-bottom:3px}
+  .note-text{font-size:13px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
+  .note-img{margin-top:6px;max-width:140px;max-height:140px;border-radius:6px;border:1px solid var(--border);cursor:pointer;display:block}
 
-        /* ── Notes list (saved notes in active ticket) ── */
-        .notes-list { margin-bottom: 10px; }
-        .note-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
-        .note-item-date { font-size: 10px; color: var(--text2); margin-bottom: 3px; }
-        .note-item-text { font-size: 12px; line-height: 1.4; margin-bottom: 4px; }
-        .note-item-photo img { width: 100%; max-height: 140px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; margin-top: 4px; }
+  /* Activity log (repair tickets) */
+  .activity{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .act-item{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px}
+  .act-meta{font-size:10px;color:var(--text2);margin-bottom:2px}
 
-        /* ── Add note area ── */
-        .add-note-area { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
-        .add-note-label { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; margin-bottom: 6px; }
-        .add-note-textarea { width: 100%; background: transparent; border: none; color: var(--text); font-family: 'Space Mono', monospace; font-size: 13px; resize: vertical; min-height: 50px; outline: none; }
-        .add-note-photo-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-        .add-note-photo-btn { font-size: 11px; padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text2); cursor: pointer; font-family: 'Space Mono', monospace; }
-        .add-note-photo-btn:hover { border-color: var(--blue); color: var(--blue); }
-        .note-photo-preview { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; }
-        .note-photo-clear { font-size: 11px; color: var(--red); cursor: pointer; background: none; border: none; font-family: 'Space Mono', monospace; }
-        .upload-status { font-size: 11px; color: var(--text2); }
+  /* Inputs */
+  textarea.note-in{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;padding:10px;min-height:60px;resize:vertical;outline:none;margin-top:4px}
+  textarea.note-in:focus{border-color:var(--blue)}
+  .date-in{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;padding:10px;outline:none}
+  .date-in:focus{border-color:var(--blue)}
+  .issue-in{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;padding:10px;min-height:50px;resize:vertical;outline:none}
+  .issue-in:focus{border-color:var(--blue)}
 
-        /* ── Forms ── */
-        .form-group { margin-bottom: 12px; }
-        .form-label { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 4px; display: block; }
-        .form-input, .form-select, .form-textarea { width: 100%; background: var(--bg2); border: 2px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 14px; }
-        .form-textarea { min-height: 60px; resize: vertical; }
+  /* Buttons */
+  .btn{padding:10px 14px;border:none;border-radius:8px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;transition:.15s}
+  .btn-primary{background:var(--blue);color:#0a0e27}
+  .btn-primary:hover{filter:brightness(1.1)}
+  .btn-ghost{background:var(--bg2);border:1px solid var(--border);color:var(--text)}
+  .btn-invoice{background:var(--bg2);color:var(--yellow);border:1px solid var(--yellow)}
+  .cmt.invoice{border-color:var(--yellow)}
+  .invoice-tag{color:var(--yellow);font-weight:700;font-size:10px;margin-left:6px}
+  .btn[disabled]{opacity:.5;cursor:default}
+  .btn-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .upload-note{font-size:11px;color:var(--text2);margin-top:6px}
 
-        /* ── Buttons ── */
-        .btn-group { display: flex; gap: 8px; }
-        .btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
-        .btn-primary   { background: var(--blue); color: #0a0e27; }
-        .btn-secondary { background: var(--bg2); color: var(--text); border: 2px solid var(--border); }
-        .btn-success   { background: var(--green); color: #0a0e27; }
-        .btn-danger    { background: rgba(255,107,107,0.15); color: var(--red); border: 2px solid var(--red); flex: 0; padding: 10px 14px; }
-        .btn-new-ticket { width: 100%; padding: 12px; border: 2px dashed var(--border); border-radius: 8px; background: transparent; color: var(--text2); font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-bottom: 4px; }
-        .btn-new-ticket:hover { border-color: var(--blue); color: var(--blue); }
+  /* Photo grid */
+  .photo-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .photo-grid img{width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer}
 
-        /* ── Divider ── */
-        .section-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  /* Divider */
+  .divider{border:none;border-top:1px solid var(--border);margin:16px 0}
 
-        /* ── Mobile modal ── */
-        .mobile-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; padding: 20px; }
-        .mobile-modal.active { display: flex; }
-        .modal-content { background: var(--bg); border: 2px solid var(--border); border-radius: 12px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
-        .modal-close { position: sticky; top: 0; background: var(--bg); padding: 12px; border-bottom: 2px solid var(--border); text-align: right; z-index: 1; }
-        .modal-close button { background: var(--bg2); color: var(--text); border: 2px solid var(--border); padding: 10px 18px; border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px 18px;font-size:13px;z-index:2000;opacity:0;transition:.2s;pointer-events:none}
+  .toast.on{opacity:1}  .toast.err{border-color:var(--red);color:var(--red)}
+  .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:3000;align-items:center;justify-content:center;padding:20px}
+  .lightbox.on{display:flex}
+  .lightbox img{max-width:100%;max-height:100%;border-radius:8px}
 
-        /* ── Scroll to top ── */
-        .scroll-top-btn { display: none; }
-
-        /* ── Responsive ── */
-        @media (max-width: 1200px) and (min-width: 700px) {
-            .container { grid-template-columns: 1fr 340px; }
-            .stat { padding: 8px 4px; }
-            .stat-num { font-size: 18px; }
-            .stat-label { font-size: 8px; }
-            .card-name { font-size: 13px; }
-            .card-addr { font-size: 11px; }
-        }
-        @media (max-width: 699px) and (orientation: portrait) {
-            .container { display: block; }
-            .map-section { display: none; }
-            .sidebar { width: 100%; min-height: 100vh; overflow-y: visible; }
-            .location-column { max-height: none; overflow-y: visible; }
-            .scroll-top-btn { display: block; position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; background: var(--blue); color: white; border: none; border-radius: 50%; font-size: 24px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(59,130,246,0.5); z-index: 9999; }
-        }
-        @media (max-width: 699px) and (orientation: landscape) {
-            .container { display: block; }
-            .sidebar { display: none; }
-            .map-section { width: 100%; height: 100vh; }
-            #map { height: 100vh; }
-        }
-    </style>
+  @media(max-width:699px){
+    .sidebar{padding:14px}
+    .stats{gap:8px}
+    .card-grid{grid-template-columns:1fr}
+  }
+  @media(max-width:380px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="map-section"><div id="map"></div></div>
-        <div class="sidebar">
-            <h2>DPM Camera Tracker v2.7</h2>
-            <div class="stats">
-                <div class="stat" onclick="window.filterByStatus('red')">        <div class="stat-num" style="color:var(--red)"       id="stat-red">0</div>       <div class="stat-label">Not Started</div></div>
-                <div class="stat" onclick="window.filterByStatus('yellow')">     <div class="stat-num" style="color:var(--yellow)"    id="stat-yellow">0</div>    <div class="stat-label">In Progress</div></div>
-                <div class="stat" onclick="window.filterByStatus('darkgreen')">  <div class="stat-num" style="color:var(--darkgreen)" id="stat-darkgreen">0</div> <div class="stat-label">Done &amp; Unpaid</div></div>
-                <div class="stat" onclick="window.filterByStatus('green')">      <div class="stat-num" style="color:var(--green)"     id="stat-green">0</div>     <div class="stat-label">Done &amp; Paid</div></div>
-                <div class="stat" onclick="window.filterByStatus('none')">       <div class="stat-num" style="color:var(--text2)"     id="stat-none">0</div>      <div class="stat-label">No Tickets</div></div>
-            </div>
-            <div class="location-list" id="list"></div>
+<div class="sidebar">
+  <div class="poll" id="poll">·</div>
+  <h1>Bill Scherzer — Job Board</h1>
+  <div class="sub" id="boardSub">loading…</div>
+  <div class="stats" id="stats"></div>
+  <div class="controls-bar">
+    <input class="search-input" id="search" placeholder="🔍 Search location or job…" oninput="onSearch(this.value)">
+  </div>
+  <div id="list"><div class="empty">Loading…</div></div>
+</div>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('on')"><img id="lightboxImg" src="" alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+
+// ── Identity ─────────────────────────────────────────────────────────────────
+// Name must match the vendor's NAME in the repair app's vendor list exactly.
+const VENDOR_NAME    = "William Scherzer";
+const IMGBB_API_KEY  = "b733862d15744e2bfaa4329d122f4ba0";
+
+// ── Backends ──────────────────────────────────────────────────────────────────
+// 1. Camera tracker Firebase (camera jobs)
+const app = initializeApp({
+  apiKey:            "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
+  authDomain:        "dpmcamera-tracker.firebaseapp.com",
+  databaseURL:       "https://dpmcamera-tracker-default-rtdb.firebaseio.com",
+  projectId:         "dpmcamera-tracker",
+  storageBucket:     "dpmcamera-tracker.firebasestorage.app",
+  messagingSenderId: "109937735873l",
+  appId:             "1:109937735873l:web:3776dedb97a4fe893de18e"
+});
+const db = getDatabase(app);
+
+// 2. Repair app alignment API (dispatched repair tickets)
+const RM_API   = "https://alignment-api-khaki.vercel.app/api/dpm-alignment";
+const RM_PASS  = "vendor123";
+const POLL_MS  = 20000;
+
+// ── Status vocabularies ───────────────────────────────────────────────────────
+// Camera tracker: color strings
+const CAM_STATUS = {
+  red:       { label:"Not Started",   urgency:4 },
+  yellow:    { label:"In Progress",   urgency:3 },
+  darkgreen: { label:"Done & Unpaid", urgency:2 },
+  green:     { label:"Done & Paid",   urgency:1 },
+};
+const CAM_FLOW = ["red","yellow","darkgreen","green"];
+
+// Repair app: canonical status strings (vendor-visible subset)
+const RM_STATUS = {
+  dispatched:  { label:"Not Started",   urgency:4, cls:"dispatched"  },
+  in_progress: { label:"In Progress",   urgency:3, cls:"in_progress" },
+  finished:    { label:"Done & Unpaid", urgency:2, cls:"finished"    },
+  closed:      { label:"Done & Paid",   urgency:1, cls:"closed"      },
+};
+const RM_FLOW   = ["dispatched","in_progress","finished","closed"];
+
+// ── Camera tracker locations ──────────────────────────────────────────────────
+// Used ONLY to display human-readable names for historical camera jobs.
+// The camera Firebase stores locIds derived from GPS coords, not names.
+// Repair app store names come from the API (RM_RESTS) — nothing below affects that.
+const FULL_LOCS = [
+  {n:"DPM Office",t:32.9418,g:-97.0725,special:true},
+  {n:"Bill's Office",t:32.6394,g:-96.5386,special:true},
+  {n:"Burger King Alliance/TMS 27082",a:"15933 North Freeway, Fort Worth, TX 76177",t:33.0252883,g:-97.2760128},
+  {n:"Burger King Alvord 22027",a:"8417 N.US Hwy 287, Alvord, TX 76225",t:33.3925543,g:-97.7297886},
+  {n:"Burger King Atlanta 23086",a:"299 U.S. 59, Atlanta, TX 75551",t:33.1178617,g:-94.181756},
+  {n:"Burger King Azle 27083",a:"1001 Boyd Road, Azle, TX 76020",t:32.9103543,g:-97.5440232},
+  {n:"Burger King Bailey Boswell 28626",a:"4541 W. Bailey Boswell, Fort Worth, TX 76179",t:32.8804702,g:-97.3928522},
+  {n:"Burger King Bonham 11460",a:"1801 North, TX-121, Bonham, TX 75418",t:33.5930631,g:-96.192829},
+  {n:"Burger King Corinth 26924",a:"8001 S. Interstate 35 E, Corinth, TX 76210",t:33.1323896,g:-97.0414887},
+  {n:"Burger King Corsicana 23613",a:"3620 W State Hwy 31, Corsicana, TX 75110",t:32.0711539,g:-96.5042803},
+  {n:"Burger King Cross Roads 28313",a:"11881 US-380, Cross Roads, TX 76227",t:33.2241299,g:-96.9820109},
+  {n:"Burger King Denton 26183",a:"2215 West University Drive, Denton, TX 76201",t:33.2292022,g:-97.159802},
+  {n:"Burger King Denton 3675",a:"2233 S Loop 288, Denton, TX 76205",t:33.1869188,g:-97.1066459},
+  {n:"Burger King Gainesville 27028",a:"1711 North I-35, Gainesville, TX 76240",t:33.641515,g:-97.1579193},
+  {n:"Burger King Greenville 20671",a:"7315 I-30 Frontage Rd, Greenville, TX 75402",t:33.0953616,g:-96.1072047},
+  {n:"Burger King Hooks 26015",a:"580 Lone Star Dr., Hooks, TX 75561",t:33.4674733,g:-94.2366504},
+  {n:"Burger King Kaufman 27415",a:"700 E. Highway 175, Kaufman, TX 75142",t:32.6488448,g:-96.5413512},
+  {n:"Burger King McKinney 6460",a:"1700 W. University Dr, McKinney, TX 75069",t:33.2169105,g:-96.6320383},
+  {n:"Burger King Melissa 28174",a:"2651 Sam Rayburn Hwy, Melissa, TX 75454",t:33.2834364,g:-96.56246},
+  {n:"Burger King Mesquite 28312",a:"2104 N Galloway Ave, Mesquite, TX 75150",t:32.7938775,g:-96.6116061},
+  {n:"Burger King Midlothian 28514",a:"2251 FM 663, Midlothian, TX 76065",t:32.4600926,g:-96.9959456},
+  {n:"Burger King Nash 10358",a:"1970 N. Kings Hwy, Nash, TX 75569",t:33.4525178,g:-94.1301793},
+  {n:"Burger King New Boston 24008",a:"900 N. McCoy Blvd., New Boston, TX 75570",t:33.4763206,g:-94.4088946},
+  {n:"Burger King Paris 2390",a:"3590 Lamar, Paris, TX 75460",t:33.660776,g:-95.5103595},
+  {n:"Burger King Plano (Coit) 4851",a:"2009 Coit Rd, Plano, TX 75075",t:33.0284064,g:-96.7706873},
+  {n:"Burger King Plano (Ohio) 13192",a:"8720 Ohio Dr, Plano, TX 75024",t:33.0978387,g:-96.7961826},
+  {n:"Burger King Quinlan 27958",a:"8909 State Highway 34 South, Quinlan, TX 75474",t:32.9054312,g:-96.1276293},
+  {n:"Burger King Royse City 24875",a:"440 W. Interstate 30, Royse City, TX 75189",t:32.9661228,g:-96.3390095},
+  {n:"Burger King Saginaw 27084",a:"6960 N Blue Mound Road, Fort Worth, TX 76131",t:32.8681978,g:-97.341787},
+  {n:"Burger King Sunnyvale 28683",a:"480 US Hwy 80, Sunnyvale, TX 75182",t:32.7832645,g:-96.5601677},
+  {n:"Burger King Terrell 25198",a:"1204 W. Moore Avenue, Terrell, TX 75160",t:32.739396,g:-96.2920632},
+  {n:"Burger King Colony 9723",a:"3700 Main St, The Colony, TX 75056",t:33.0674516,g:-96.8893989},
+  {n:"Subway Texarkana 22411",a:"4103 W, 7th St., Texarkana, TX 75503",t:33.4190104,g:-94.0941756},
+  {n:"Paradise QS #01 - Sun Valley",a:"5401 Sun Valley Dr., Fort Worth, TX 76119",t:32.6795074,g:-97.2398344},
+  {n:"Paradise QS #02 - Lewsville",a:"521 E. Hwy 121, Lewisville, TX 75057",t:32.9906715,g:-96.9780407},
+  {n:"Paradise QS #03 - Grapevine",a:"513 E. Northwest Hwy, Grapevine, TX 76051",t:32.9413343,g:-97.0731222},
+  {n:"Paradise QS #04 - Alvord",a:"8417 N. US Hwy 287, Alvord, TX 76225",t:33.3925543,g:-97.7297886},
+  {n:"Paradise QS #05 - Hope",a:"901 W. 3rd St., Hope, AR 71801",t:33.6646746,g:-93.6003814},
+  {n:"Paradise QS #06 - Nash",a:"1970 N. Kings Hwy, Nash, TX 75569",t:33.4519178,g:-94.1301793},
+  {n:"Paradise QS #07 - 7th St",a:"4103 W, 7th St., Texarkana, TX 75501",t:33.4184104,g:-94.0941756},
+  {n:"Paradise QS #08 - Ashdown",a:"950 S. Constitution Avenue, Ashdown, AR 71822",t:33.6625838,g:-94.1192361},
+  {n:"Paradise QS #09 - New Boston Rd",a:"3400 New Boston Rd., Texarkana, TX 75501",t:33.4403875,g:-94.0875947},
+  {n:"Paradise QS #10 - Texas Blvd",a:"3300 Texas Blvd, Texarkana, TX 75503",t:33.448522,g:-94.0527795},
+  {n:"Paradise QS #11 - New Boston City",a:"900 N. McCoy Blvd., New Boston, TX 75570",t:33.4757206,g:-94.4088946},
+  {n:"Paradise QS #12- Summerhill",a:"4621 Summerhill Rd., Texarkana, TX 75503",t:33.4630376,g:-94.0661119},
+  {n:"Paradise QS #13 - Hooks",a:"580 Lone Star Dr., Hooks, TX 75561",t:33.4668733,g:-94.2366504},
+  {n:"Paradise QS #14 - White Settlement",a:"9913 White Settlement Rd., Fort Worth, TX 76108",t:32.7589535,g:-97.4917004},
+  {n:"Paradise QS #15 - Pittsburg",a:"635 Mt Pleasant Street, Pittsburg, TX 75686",t:33.0094559,g:-94.9644747},
+  {n:"Paradise QS #16 - MT Pleasant",a:"2011 North Jefferson Ave., Mt. Pleasant, TX 75455",t:33.1772915,g:-94.9708888},
+  {n:"7-Eleven - Riverfront",a:"1005 S. Riverfront Blvd., Dallas, TX 75207",t:32.7654016,g:-96.8034512},
+  {n:"Scarborough Car Wash",a:"1448 FM 66, Waxahachie, TX 75167",t:32.3741146,g:-96.8662758},
+  {n:"Scarborough Travel Stop",a:"3298 S Interstate Hwy 35 E, Waxahachie, TX 75165",t:32.3782774,g:-96.7708138},
+];
+
+function locId(l){ return (l.t+"_"+l.g).replace(/\./g,"_"); }
+const LOC_MAP = {};
+FULL_LOCS.forEach(l => { LOC_MAP[locId(l)] = l; });
+function locName(lid){ return (LOC_MAP[lid]&&LOC_MAP[lid].n)||lid; }
+function locAddr(lid){ return (LOC_MAP[lid]&&LOC_MAP[lid].a)||""; }
+function isSpecial(lid){ return !!(LOC_MAP[lid]&&LOC_MAP[lid].special); }
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let CAM_DATA   = {};   // locId → Firebase jobs node (camera tickets)
+let RM_TICKETS = {};   // ticketId → repair app ticket object
+let RM_KEY     = null; // resolved vendor key for write-backs
+let RM_RESTS   = {};   // storeId → restaurant record (for store names)
+
+let curFilter  = null;
+let curSearch  = "";
+let openItem   = null; // { type:"cam"|"rm", id, tkId? }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(msg,kind){ const t=$("toast");t.textContent=msg;t.className="toast on"+(kind==="err"?" err":"");setTimeout(()=>t.className="toast",2400); }
+function fmtDate(s){ if(!s) return "—"; const d=new Date(s); return d.toLocaleDateString("en-US",{month:"short",day:"numeric"})+" · "+d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}); }
+function now(){ return Date.now(); }
+function uid(){ return now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+// ── Camera helpers ────────────────────────────────────────────────────────────
+function getSortedTickets(locData){
+  if(!locData||!locData.tickets) return [];
+  return Object.entries(locData.tickets)
+    .map(([id,t])=>({id,...t}))
+    .sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
+}
+function getOpenTicket(locData){
+  if(!locData||!locData.tickets) return null;
+  return Object.values(locData.tickets).find(t=>!t.archived)||null;
+}
+function getOpenTicketId(locData){
+  if(!locData||!locData.tickets) return null;
+  return Object.keys(locData.tickets).find(k=>!locData.tickets[k].archived)||null;
+}
+function camEffective(locData){
+  const open=getOpenTicket(locData);
+  if(open) return {ticket:open,isOpen:true};
+  const all=getSortedTickets(locData);
+  if(all.length) return {ticket:all[all.length-1],isOpen:false};
+  return null;
+}
+function camUrgency(s){ return (CAM_STATUS[s||"red"]||{urgency:0}).urgency; }
+
+// ── Repair app helpers ────────────────────────────────────────────────────────
+function rmStoreName(sid){ return (RM_RESTS[sid]&&RM_RESTS[sid].storeName)||sid||"Unknown store"; }
+function rmUrgency(s){ return (RM_STATUS[s]||{urgency:0}).urgency; }
+function rmStatusView(s){
+  if(RM_STATUS[s]) return RM_STATUS[s];
+  if(s==="waiting") return {label:"On Hold",urgency:0,cls:"waiting"};
+  return {label:(s||"—").replace(/_/g," "),urgency:0,cls:"other"};
+}
+
+// ── RM API ───────────────────────────────────────────────────────────────────
+async function loadRM(){
+  const r = await fetch(`${RM_API}?vendor=${encodeURIComponent(VENDOR_NAME)}`,{cache:"no-store"});
+  if(!r.ok) throw new Error("Repair API unreachable");
+  const data = await r.json();
+  RM_TICKETS = data.maintenanceTickets || {};
+  RM_RESTS   = data.restaurants        || {};
+  RM_KEY     = data.vendorKey          || null;
+  if(!RM_KEY) $("boardSub").textContent = (($("boardSub").textContent||"")+(" · ⚠ "+VENDOR_NAME+" not found in vendor list")).trim();
+}
+async function rmWriteTicket(id, ticket){
+  const updates = {}; updates[`maintenanceTickets/${id}`] = ticket;
+  const r = await fetch(RM_API,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({password:RM_PASS,vendorId:(RM_KEY||VENDOR_NAME),updates})});
+  if(!r.ok){ let m="Write failed"; try{m=(await r.json()).error||m}catch(e){} throw new Error(m); }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+// Unified stats bar: "Not Started / In Progress / Done & Unpaid / Done & Paid"
+// across both systems (cam red=dispatched, etc.)
+function renderStats(){
+  const counts = {ns:0, ip:0, dup:0, dap:0};
+  // Camera: open tickets only
+  Object.entries(CAM_DATA).forEach(([lid,locData])=>{
+    if(isSpecial(lid)) return;
+    const open=getOpenTicket(locData); if(!open) return;
+    const s=open.s||"red";
+    if(s==="red") counts.ns++;
+    else if(s==="yellow") counts.ip++;
+    else if(s==="darkgreen") counts.dup++;
+    else if(s==="green") counts.dap++;
+  });
+  // Repair: dispatched-flow tickets
+  Object.values(RM_TICKETS).forEach(t=>{
+    if(t.status==="dispatched") counts.ns++;
+    else if(t.status==="in_progress") counts.ip++;
+    else if(t.status==="finished") counts.dup++;
+    else if(t.status==="closed") counts.dap++;
+  });
+  const items=[
+    {key:"ns",  label:"Not Started",   color:"red"},
+    {key:"ip",  label:"In Progress",   color:"yellow"},
+    {key:"dup", label:"Done & Unpaid", color:"darkgreen"},
+    {key:"dap", label:"Done & Paid",   color:"green"},
+  ];
+  $("stats").innerHTML = items.map(it=>`
+    <div class="stat" onclick="window.toggleFilter('${it.key}')">
+      <div class="stat-num" style="color:var(--${it.color})">${counts[it.key]}</div>
+      <div class="stat-label">${esc(it.label)}</div></div>`).join("");
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(){
+  renderStats();
+  const q = curSearch.toLowerCase();
+
+  // ── Camera section ──
+  let camEntries = Object.entries(CAM_DATA)
+    .filter(([lid])=>!isSpecial(lid))
+    .map(([lid,locData])=>{ const et=camEffective(locData); return et?{lid,locData,...et}:null; })
+    .filter(Boolean);
+
+  if(curFilter){
+    const fMap={ns:"red",ip:"yellow",dup:"darkgreen",dap:"green"};
+    const fs=fMap[curFilter];
+    camEntries=camEntries.filter(e=>e.isOpen&&(e.ticket.s||"red")===fs);
+  }
+  if(q) camEntries=camEntries.filter(e=>
+    locName(e.lid).toLowerCase().includes(q)||
+    locAddr(e.lid).toLowerCase().includes(q)||
+    (e.ticket.issue||"").toLowerCase().includes(q));
+
+  camEntries.sort((a,b)=>{
+    if(a.isOpen!==b.isOpen) return a.isOpen?-1:1;
+    if(a.isOpen&&b.isOpen){ const d=camUrgency(b.ticket.s)-camUrgency(a.ticket.s); if(d) return d; }
+    return locName(a.lid).localeCompare(locName(b.lid));
+  });
+
+  // ── Repair section ──
+  let rmEntries = Object.entries(RM_TICKETS)
+    .map(([id,t])=>({id,t}));
+
+  if(curFilter){
+    const fMap={ns:"dispatched",ip:"in_progress",dup:"finished",dap:"closed"};
+    const fs=fMap[curFilter];
+    rmEntries=rmEntries.filter(e=>e.t.status===fs);
+  }
+  if(q) rmEntries=rmEntries.filter(e=>
+    rmStoreName(e.t.storeId).toLowerCase().includes(q)||
+    (e.t.description||"").toLowerCase().includes(q)||
+    (e.t.shortId||"").toLowerCase().includes(q)||
+    (e.t.category||"").toLowerCase().includes(q));
+
+  rmEntries.sort((a,b)=>rmUrgency(b.t.status)-rmUrgency(a.t.status)||(b.t.createdAt||0)-(a.t.createdAt||0));
+
+  // ── Render list ──
+  const list=$("list");
+  if(!camEntries.length&&!rmEntries.length){
+    list.innerHTML=`<div class="empty">No jobs${curFilter||curSearch?" match this view":""} assigned yet.</div>`;
+    return;
+  }
+
+  const mkCamCard=e=>{
+    const s=e.ticket.s||"red";
+    const info=CAM_STATUS[s]||{label:s};
+    const statusBadge=e.isOpen?`<span class="badge s-${s}">${esc(info.label)}</span>`:`<span class="badge s-none">Completed</span>`;
+    const dateBadge=e.ticket.v?`<span class="badge s-none">📅 ${esc(e.ticket.v)}</span>`:"";
+    const histBadge=!e.isOpen?`<span class="badge s-none">📁 History</span>`:"";
+    return `<div class="card" onclick="window.openCam('${esc(e.lid)}')">
+      <div class="card-name">${esc(locName(e.lid))}</div>
+      ${locAddr(e.lid)?`<div class="card-sub">${esc(locAddr(e.lid))}</div>`:""}
+      <div class="card-meta">${statusBadge}${dateBadge}${histBadge}</div>
+    </div>`;
+  };
+
+  const mkRmCard=({id,t})=>{
+    const sv=rmStatusView(t.status);
+    const cat=t.category?t.category.charAt(0).toUpperCase()+t.category.slice(1):"";
+    return `<div class="card" onclick="window.openRM('${esc(id)}')">
+      <div class="card-name">${esc(rmStoreName(t.storeId))}${t.shortId?` <span style="color:var(--text2);font-weight:400;font-size:11px">#${esc(t.shortId)}</span>`:""}
+      </div>
+      ${t.description?`<div class="card-sub">${cat?`[${esc(cat)}] `:""}${esc((t.description||"").slice(0,60))}${(t.description||"").length>60?"…":""}</div>`:""}
+      <div class="card-meta"><span class="badge s-${sv.cls}">${esc(sv.label)}</span></div>
+    </div>`;
+  };
+
+  let html="";
+  if(rmEntries.length){
+    html+=`<div class="section-head">🔧 Repair Jobs (${rmEntries.length})</div>`;
+    html+=`<div class="card-grid">${rmEntries.map(mkRmCard).join("")}</div>`;
+  }
+  if(camEntries.length){
+    html+=`<div class="section-head">📷 Camera Jobs (${camEntries.length})</div>`;
+    html+=`<div class="card-grid">${camEntries.map(mkCamCard).join("")}</div>`;
+  }
+  list.innerHTML=html;
+
+  // subheader
+  const rmOpen=Object.values(RM_TICKETS).filter(t=>RM_STATUS[t.status]).length;
+  const camOpen=Object.values(CAM_DATA).filter((_,i)=>{
+    const lid=Object.keys(CAM_DATA)[i]; return !isSpecial(lid)&&getOpenTicket(CAM_DATA[lid]);
+  }).length;
+  $("boardSub").textContent=`${rmOpen+camOpen} active job${(rmOpen+camOpen)===1?"":"s"} · repair ${rmOpen} · camera ${camOpen}`;
+}
+
+window.toggleFilter=function(k){ curFilter=curFilter===k?null:k; render(); };
+window.onSearch=function(v){ curSearch=(v||"").trim(); render(); };
+window.lightbox=function(u){ $("lightboxImg").src=u; $("lightbox").classList.add("on"); };
+
+// ── Camera detail sheet ───────────────────────────────────────────────────────
+window.openCam=function(lid){
+  openItem={type:"cam",lid};
+  renderCamSheet(lid);
+  $("modal").classList.add("on");
+  document.body.style.overflow="hidden";
+};
+
+function renderCamSheet(lid){
+  const locData=CAM_DATA[lid];
+  if(!locData) return;
+  const all=getSortedTickets(locData);
+  const archived=all.filter(t=>t.archived);
+  const open=all.find(t=>!t.archived)||null;
+  const tkId=getOpenTicketId(locData);
+
+  let histHtml="";
+  if(archived.length){
+    const rows=archived.map((t,idx)=>{
+      const s=t.s||"red"; const info=CAM_STATUS[s]||{label:s};
+      const displayDate=t.v||(t.createdAt?new Date(t.createdAt).toLocaleDateString():"No date");
+      const notesHtml=(t.notes||[]).map(n=>`
+        <div class="note" style="margin-top:6px">
+          <div class="note-meta">${esc(fmtDate(n.t))}</div>
+          ${n.n?`<div class="note-text">${esc(n.n)}</div>`:""}
+          ${n.photoUrl?`<img class="note-img" src="${esc(n.photoUrl)}" onclick="window.lightbox('${esc(n.photoUrl)}')">`:""}
+        </div>`).join("");
+      const body=(t.issue?`<div class="fl" style="margin-top:8px">Issue</div><div class="val">${esc(t.issue)}</div>`:"")+
+        (notesHtml?`<div class="fl" style="margin-top:8px">Notes</div>${notesHtml}`:"")+
+        (!t.issue&&!notesHtml?`<div style="color:var(--text2);font-size:12px;margin-top:6px">No details recorded.</div>`:"");
+      return `<div class="archived-item">
+        <div class="archived-hdr" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span>Ticket #${idx+1} — ${esc(displayDate)}</span>
+          <span class="badge s-${s}" style="font-size:10px">${esc(info.label)}</span>
         </div>
+        <div class="archived-body">${body}</div>
+      </div>`;
+    }).join("");
+    histHtml=`<div class="fl">📁 History (${archived.length})</div>${rows}<hr class="divider">`;
+  }
+
+  // Camera is historical / read-only. Show last open ticket as a read-only record.
+  let openHtml="";
+  if(open){
+    const s=open.s||"red"; const info=CAM_STATUS[s]||{label:s};
+    const notesHtml=(open.notes||[]).map(n=>`
+      <div class="note">
+        <div class="note-meta">${esc(fmtDate(n.t))}</div>
+        ${n.n?`<div class="note-text">${esc(n.n)}</div>`:""}
+        ${n.photoUrl?`<img class="note-img" src="${esc(n.photoUrl)}" onclick="window.lightbox('${esc(n.photoUrl)}')">`:""}
+      </div>`).join("")||`<div style="color:var(--text2);font-size:13px">No notes recorded.</div>`;
+    openHtml=`
+      <div class="fl">🎫 Last recorded job</div>
+      <div style="margin-bottom:8px"><span class="badge s-${s}">${esc(info.label)}</span>${open.v?` <span class="badge s-none">📅 ${esc(open.v)}</span>`:""}</div>
+      ${open.issue?`<div class="fl">Issue</div><div class="val" style="margin-bottom:10px">${esc(open.issue)}</div>`:""}
+      <div class="fl">Notes</div>
+      <div class="notes">${notesHtml}</div>`;
+  } else {
+    openHtml=`<div style="color:var(--text2);font-size:13px;padding:8px 0">No open job recorded at this location.</div>`;
+  }
+
+  $("sheet").innerHTML=`
+    <div class="sheet-h"><h2>📷 ${esc(locName(lid))}</h2><button class="x" onclick="window.closeModal()">✕ Close</button></div>
+    <div class="sheet-b">
+      <div style="font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:12px">
+        📋 Historical record from camera tracker — view only. New jobs come through the repair app.
+      </div>
+      <div class="fl" style="margin-top:0">Address</div><div class="val">${esc(locAddr(lid)||"—")}</div>
+      ${histHtml}${openHtml}
+    </div>`;
+}
+
+
+// ── Repair ticket detail sheet ────────────────────────────────────────────────
+window.openRM=function(id){
+  openItem={type:"rm",id};
+  renderRMSheet(id);
+  $("modal").classList.add("on");
+  document.body.style.overflow="hidden";
+};
+
+function renderRMSheet(id){
+  const t=RM_TICKETS[id]; if(!t) return;
+  const sv=rmStatusView(t.status);
+  const cat=t.category?t.category.charAt(0).toUpperCase()+t.category.slice(1):"";
+
+  const statusBtns=RM_FLOW.map(s=>{
+    const si=RM_STATUS[s]; const cur=t.status===s?" cur":"";
+    return `<button class="status-btn b-${s}${cur}" onclick="window.rmSetStatus('${esc(id)}','${s}')">${esc(si.label)}</button>`;
+  }).join("");
+
+  const photos=Array.isArray(t.photos)?t.photos:[];
+  const photoHtml=photos.length?`<div class="fl">Photos</div><div class="photo-grid">${photos.map(u=>`<img src="${esc(u)}" onclick="window.lightbox('${esc(u)}')">`).join("")}</div>`:"";
+
+  const activity=Array.isArray(t.activity)?t.activity:[];
+  const actHtml=activity.length?activity.slice(-8).reverse().map(a=>`
+    <div class="act-item">
+      <div class="act-meta">${esc(a.by||"")} · ${fmtDate(a.ts)}</div>
+      <div>${esc(a.note||a.action||"")}</div>
+    </div>`).join(""):`<div style="color:var(--text2);font-size:13px">No activity yet.</div>`;
+
+  const comments=Array.isArray(t.comments)?t.comments:[];
+  const cmtHtml=comments.length?comments.map(c=>{
+    const isInv=!!c.invoice;
+    const img=c.fileUrl?`<img class="note-img" src="${esc(c.fileUrl)}" onclick="window.lightbox('${esc(c.fileUrl)}')">`:"";
+    const del=(isInv&&c.id)?`<button class="cmt-del" onclick="window.rmDeleteInvoice('${id}','${esc(c.id)}')">🗑 Delete invoice</button>`:"";
+    return `<div class="note${isInv?" cmt invoice":""}">
+      <div class="note-meta">${esc(c.by||"")} · ${fmtDate(c.ts)}${isInv?' <span class="invoice-tag">🧾 Invoice</span>':''}</div>
+      ${c.text?`<div class="note-text">${esc(c.text)}</div>`:""}
+      ${img}${del}</div>`;
+  }).join(""):`<div style="color:var(--text2);font-size:13px">No comments yet.</div>`;
+
+  // Other tickets at the same store
+  const siblings=Object.entries(RM_TICKETS).filter(([sid,x])=>x.storeId===t.storeId&&sid!==id)
+    .sort(([,a],[,b])=>(b.createdAt||0)-(a.createdAt||0));
+  const siblingHtml=siblings.length?`<div class="fl">Other jobs at this store</div>`+
+    siblings.map(([sid,x])=>{const sv=rmStatusView(x.status);
+      return `<div class="card" style="margin-bottom:6px" onclick="window.openRM('${sid}')">
+        <div class="card-meta"><span class="badge s-${sv.cls}">${esc(sv.label)}</span>
+        <span style="font-size:11px;color:var(--text2);margin-left:4px">#${esc(x.shortId||sid.slice(0,6))} — ${esc((x.description||"").slice(0,40))}${(x.description||"").length>40?"…":""}</span></div>
+      </div>`;}).join(""):"";
+
+  $("sheet").innerHTML=`
+    <div class="sheet-h">
+      <h2>🔧 ${esc(rmStoreName(t.storeId))}${t.shortId?` · #${esc(t.shortId)}`:""}</h2>
+      <button class="x" onclick="window.closeModal()">✕ Close</button>
     </div>
-
-    <div class="mobile-modal" id="modal">
-        <div class="modal-content">
-            <div class="modal-close"><button onclick="window.closeModal()">✕ Close</button></div>
-            <div id="modal-body"></div>
-        </div>
-    </div>
-
-    <button class="scroll-top-btn" onclick="window.scrollToTop()">↑</button>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-        import { getDatabase, ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
-
-        const app = initializeApp({
-            apiKey: "AIzaSyDnvQgObDjV5ptukivRc3uTAI_bOok1zBA",
-            authDomain: "dpmcamera-tracker.firebaseapp.com",
-            databaseURL: "https://dpmcamera-tracker-default-rtdb.firebaseio.com",
-            projectId: "dpmcamera-tracker",
-            storageBucket: "dpmcamera-tracker.firebasestorage.app",
-            messagingSenderId: "109937735873l",
-            appId: "1:109937735873l:web:3776dedb97a4fe893de18e"
-        });
-        const db = getDatabase(app);
-        const IMGBB_API_KEY = 'b733862d15744e2bfaa4329d122f4ba0';
-
-        // ─────────────────────────────────────────
-        // Locations
-        // ─────────────────────────────────────────
-        const locs = [
-            {n:"DPM Office",a:"520 E NW Hwy, Grapevine, TX 76051",t:32.9418,g:-97.0725,special:true},
-            {n:"Bill's Office",a:"615 Judy Lane, Seagoville, TX 75159",t:32.6394,g:-96.5386,special:true},
-            {n:"Burger King Alliance/TMS 27082",a:"15933 North Freeway, Fort Worth, TX 76177",t:33.0252883,g:-97.2760128},
-            {n:"Burger King Alvord 22027",a:"8417 N.US Hwy 287, Alvord, TX 76225",t:33.3925543,g:-97.7297886},
-            {n:"Burger King Atlanta 23086",a:"299 U.S. 59, Atlanta, TX 75551",t:33.1178617,g:-94.181756},
-            {n:"Burger King Azle 27083",a:"1001 Boyd Road, Azle, TX 76020",t:32.9103543,g:-97.5440232},
-            {n:"Burger King Bailey Boswell 28626",a:"4541 W. Bailey Boswell, Fort Worth, TX 76179",t:32.8804702,g:-97.3928522},
-            {n:"Burger King Bonham 11460",a:"1801 North, TX-121, Bonham, TX 75418",t:33.5930631,g:-96.192829},
-            {n:"Burger King Corinth 26924",a:"8001 S. Interstate 35 E, Corinth, TX 76210",t:33.1323896,g:-97.0414887},
-            {n:"Burger King Corsicana 23613",a:"3620 W State Hwy 31, Corsicana, TX 75110",t:32.0711539,g:-96.5042803},
-            {n:"Burger King Cross Roads 28313",a:"11881 US-380, Cross Roads, TX 76227",t:33.2241299,g:-96.9820109},
-            {n:"Burger King Denton 26183",a:"2215 West University Drive, Denton, TX 76201",t:33.2292022,g:-97.159802},
-            {n:"Burger King Denton 3675",a:"2233 S Loop 288, Denton, TX 76205",t:33.1869188,g:-97.1066459},
-            {n:"Burger King Gainesville 27028",a:"1711 North I-35, Gainesville, TX 76240",t:33.641515,g:-97.1579193},
-            {n:"Burger King Greenville 20671",a:"7315 I-30 Frontage Rd, Greenville, TX 75402",t:33.0953616,g:-96.1072047},
-            {n:"Burger King Hooks 26015",a:"580 Lone Star Dr., Hooks, TX 75561",t:33.4674733,g:-94.2366504},
-            {n:"Burger King Kaufman 27415",a:"700 E. Highway 175, Kaufman, TX 75142",t:32.6488448,g:-96.5413512},
-            {n:"Burger King McKinney 6460",a:"1700 W. University Dr, McKinney, TX 75069",t:33.2169105,g:-96.6320383},
-            {n:"Burger King Melissa 28174",a:"2651 Sam Rayburn Hwy, Melissa, TX 75454",t:33.2834364,g:-96.56246},
-            {n:"Burger King Mesquite 28312",a:"2104 N Galloway Ave, Mesquite, TX 75150",t:32.7938775,g:-96.6116061},
-            {n:"Burger King Midlothian 28514",a:"2251 FM 663, Midlothian, TX 76065",t:32.4600926,g:-96.9959456},
-            {n:"Burger King Nash 10358",a:"1970 N. Kings Hwy, Nash, TX 75569",t:33.4525178,g:-94.1301793},
-            {n:"Burger King New Boston 24008",a:"900 N. McCoy Blvd., New Boston, TX 75570",t:33.4763206,g:-94.4088946},
-            {n:"Burger King Paris 2390",a:"3590 Lamar, Paris, TX 75460",t:33.660776,g:-95.5103595},
-            {n:"Burger King Plano (Coit) 4851",a:"2009 Coit Rd, Plano, TX 75075",t:33.0284064,g:-96.7706873},
-            {n:"Burger King Plano (Ohio) 13192",a:"8720 Ohio Dr, Plano, TX 75024",t:33.0978387,g:-96.7961826},
-            {n:"Burger King Quinlan 27958",a:"8909 State Highway 34 South, Quinlan, TX 75474",t:32.9054312,g:-96.1276293},
-            {n:"Burger King Royse City 24875",a:"440 W. Interstate 30, Royse City, TX 75189",t:32.9661228,g:-96.3390095},
-            {n:"Burger King Saginaw 27084",a:"6960 N Blue Mound Road, Fort Worth, TX 76131",t:32.8681978,g:-97.341787},
-            {n:"Burger King Sunnyvale 28683",a:"480 US Hwy 80, Sunnyvale, TX 75182",t:32.7832645,g:-96.5601677},
-            {n:"Burger King Terrell 25198",a:"1204 W. Moore Avenue, Terrell, TX 75160",t:32.739396,g:-96.2920632},
-            {n:"Burger King Colony 9723",a:"3700 Main St, The Colony, TX 75056",t:33.0674516,g:-96.8893989},
-            {n:"Subway Texarkana 22411",a:"4103 W, 7th St., Texarkana, TX 75503",t:33.4190104,g:-94.0941756},
-            {n:"Paradise QS #01 - Sun Valley",a:"5401 Sun Valley Dr., Fort Worth, TX 76119",t:32.6795074,g:-97.2398344},
-            {n:"Paradise QS #02 - Lewsville",a:"521 E. Hwy 121, Lewisville, TX 75057",t:32.9906715,g:-96.9780407},
-            {n:"Paradise QS #03 - Grapevine",a:"513 E. Northwest Hwy, Grapevine, TX 76051",t:32.9413343,g:-97.0731222},
-            {n:"Paradise QS #04 - Alvord",a:"8417 N. US Hwy 287, Alvord, TX 76225",t:33.3925543,g:-97.7297886},
-            {n:"Paradise QS #05 - Hope",a:"901 W. 3rd St., Hope, AR 71801",t:33.6646746,g:-93.6003814},
-            {n:"Paradise QS #06 - Nash",a:"1970 N. Kings Hwy, Nash, TX 75569",t:33.4519178,g:-94.1301793},
-            {n:"Paradise QS #07 - 7th St",a:"4103 W, 7th St., Texarkana, TX 75501",t:33.4184104,g:-94.0941756},
-            {n:"Paradise QS #08 - Ashdown",a:"950 S. Constitution Avenue, Ashdown, AR 71822",t:33.6625838,g:-94.1192361},
-            {n:"Paradise QS #09 - New Boston Rd",a:"3400 New Boston Rd., Texarkana, TX 75501",t:33.4403875,g:-94.0875947},
-            {n:"Paradise QS #10 - Texas Blvd",a:"3300 Texas Blvd, Texarkana, TX 75503",t:33.448522,g:-94.0527795},
-            {n:"Paradise QS #11 - New Boston City",a:"900 N. McCoy Blvd., New Boston, TX 75570",t:33.4757206,g:-94.4088946},
-            {n:"Paradise QS #12- Summerhill",a:"4621 Summerhill Rd., Texarkana, TX 75503",t:33.4630376,g:-94.0661119},
-            {n:"Paradise QS #13 - Hooks",a:"580 Lone Star Dr., Hooks, TX 75561",t:33.4668733,g:-94.2366504},
-            {n:"Paradise QS #14 - White Settlement",a:"9913 White Settlement Rd., Fort Worth, TX 76108",t:32.7589535,g:-97.4917004},
-            {n:"Paradise QS #15 - Pittsburg",a:"635 Mt Pleasant Street, Pittsburg, TX 75686",t:33.0094559,g:-94.9644747},
-            {n:"Paradise QS #16 - MT Pleasant",a:"2011 North Jefferson Ave., Mt. Pleasant, TX 75455",t:33.1772915,g:-94.9708888},
-            {n:"7-Eleven - Riverfront",a:"1005 S. Riverfront Blvd., Dallas, TX 75207",t:32.7654016,g:-96.8034512},
-            {n:"Scarborough Car Wash",a:"1448 FM 66, Waxahachie, TX 75167",t:32.3741146,g:-96.8662758},
-            {n:"Scarborough Travel Stop",a:"3298 S Interstate Hwy 35 E, Waxahachie, TX 75165",t:32.3782774,g:-96.7708138}
-        ];
-
-        // ─────────────────────────────────────────
-        // Map
-        // ─────────────────────────────────────────
-        const map = L.map('map').setView([32.9413343, -97.0731222], 10);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom:20, attribution:'© OpenStreetMap' }).addTo(map);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', { maxZoom:20 }).addTo(map);
-
-        // ─────────────────────────────────────────
-        // State
-        // Firebase structure:
-        //   jobs/{locId}/tickets/{ticketId} = { s, v, issue, notes:[{n,t,photoUrl?}], archived, createdAt }
-        // ─────────────────────────────────────────
-        let data = {};
-        let markers = {};
-        let activeFilter = null;
-
-        // ─────────────────────────────────────────
-        // Helpers
-        // ─────────────────────────────────────────
-        function locId(l) { return `${l.t}_${l.g}`.replace(/\./g, '_'); }
-        function newTicketId() { return 'tk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
-
-        function statusLabel(s) {
-            return s==='red'?'Not Started':s==='yellow'?'In Progress':s==='darkgreen'?'Done & Unpaid':s==='green'?'Done & Paid':'No Issues';
-        }
-
-        function statusColor(s) {
-            return s==='red'?'#ff6b6b':s==='yellow'?'#ffd93d':s==='darkgreen'?'#2d7a4f':s==='green'?'#6bcf7f':'#74b9ff';
-        }
-
-        function getOpenTicket(locData) {
-            if(!locData?.tickets) return null;
-            return Object.values(locData.tickets).find(t => !t.archived) || null;
-        }
-
-        function getOpenTicketId(locData) {
-            if(!locData?.tickets) return null;
-            return Object.keys(locData.tickets).find(k => !locData.tickets[k].archived) || null;
-        }
-
-        function getSortedTickets(locData) {
-            if(!locData?.tickets) return [];
-            return Object.entries(locData.tickets)
-                .map(([id, t]) => ({id, ...t}))
-                .sort((a, b) => (a.createdAt||'').localeCompare(b.createdAt||''));
-        }
-
-        function getMarkerColor(locData) {
-            const open = getOpenTicket(locData);
-            if(open) return statusColor(open.s || 'blue');
-            if(locData?.tickets && Object.keys(locData.tickets).length > 0) return '#4a5568'; // has history, no open ticket
-            return '#74b9ff'; // no tickets at all
-        }
-
-        // ─────────────────────────────────────────
-        // Migration: v1 flat format → ticket system
-        // Runs once on boot. Safe to re-run (skips already-migrated).
-        // ─────────────────────────────────────────
-        async function migrateIfNeeded() {
-            const snap = await get(ref(db, 'jobs'));
-            const raw = snap.val();
-            if(!raw) return;
-
-            const writes = [];
-            for(const [lid, val] of Object.entries(raw)) {
-                if(!val || val.tickets) continue; // already migrated or empty
-                if(!val.s) continue; // not a recognizable old record
-
-                const tkId = newTicketId();
-                const ticket = {
-                    s: val.s,
-                    v: val.v || '',
-                    issue: val.issue || '',
-                    notes: val.notes || [],
-                    archived: val.s === 'green', // Done & Paid tickets auto-archive
-                    createdAt: new Date().toISOString(),
-                    migratedFrom: 'v1'
-                };
-                // Attach old photo to first note if present
-                if(val.photoUrl) {
-                    if(ticket.notes.length === 0) {
-                        ticket.notes.push({ n: '(photo from previous version)', t: new Date().toISOString(), photoUrl: val.photoUrl });
-                    } else {
-                        ticket.notes[0] = { ...ticket.notes[0], photoUrl: val.photoUrl };
-                    }
-                }
-                writes.push(set(ref(db, `jobs/${lid}/tickets/${tkId}`), ticket));
-            }
-            if(writes.length > 0) {
-                await Promise.all(writes);
-                console.log(`v2.7 migration: converted ${writes.length} location(s).`);
-            }
-        }
-
-        // ─────────────────────────────────────────
-        // Stats
-        // ─────────────────────────────────────────
-        function getEffectiveStatus(locData) {
-            // Open ticket wins. If no open ticket, use the most recent archived ticket's status.
-            const open = getOpenTicket(locData);
-            if(open) return open.s || 'blue';
-            const all = getSortedTickets(locData);
-            if(all.length > 0) return all[all.length - 1].s || 'blue';
-            return 'none';
-        }
-
-        function updateStats() {
-            const counts = { red:0, yellow:0, darkgreen:0, green:0, none:0 };
-            locs.forEach(l => {
-                if(l.special) return;
-                const s = getEffectiveStatus(data[locId(l)]);
-                if(s === 'blue' || s === 'none') counts.none++;
-                else counts[s] = (counts[s] || 0) + 1;
-            });
-            document.getElementById('stat-red').textContent       = counts.red;
-            document.getElementById('stat-yellow').textContent    = counts.yellow;
-            document.getElementById('stat-darkgreen').textContent = counts.darkgreen;
-            document.getElementById('stat-green').textContent     = counts.green;
-            document.getElementById('stat-none').textContent      = counts.none;
-        }
-
-        // ─────────────────────────────────────────
-        // Filter
-        // ─────────────────────────────────────────
-        window.filterByStatus = function(status) {
-            if(activeFilter === status) {
-                activeFilter = null;
-                document.querySelectorAll('.card').forEach(c => c.style.display = '');
-                document.querySelectorAll('.stat').forEach(s => s.style.opacity = '1');
-                return;
-            }
-            activeFilter = status;
-            document.querySelectorAll('.card').forEach(card => {
-                card.style.display = (card.dataset.filterStatus === status) ? '' : 'none';
-            });
-            document.querySelectorAll('.stat').forEach(s => s.style.opacity = '0.3');
-            const idx = {red:0, yellow:1, darkgreen:2, green:3, none:4};
-            if(idx[status] !== undefined) document.querySelectorAll('.stat')[idx[status]].style.opacity = '1';
-        };
-
-        // ─────────────────────────────────────────
-        // Sidebar list
-        // ─────────────────────────────────────────
-        function renderList() {
-            const ff=[], cs=[], specialFF=[], specialCS=[];
-            locs.forEach(l => {
-                if(l.special) {
-                    (l.n.includes('DPM') ? specialFF : specialCS).push(l);
-                } else if(l.n.includes('Burger King') || l.n.includes('Subway')) {
-                    ff.push(l);
-                } else {
-                    cs.push(l);
-                }
-            });
-
-            ff.sort((a,b) => {
-                const clean = n => { let x=n.replace('Burger King ','').replace('Subway ',''); if(x.startsWith('The ')) x=x.substring(4); return x; };
-                return clean(a.n).localeCompare(clean(b.n));
-            });
-            cs.sort((a,b) => {
-                const gn = n => { const m=n.match(/Paradise QS #(\d+)/); return m?parseInt(m[1]):null; };
-                const an=gn(a.n), bn=gn(b.n);
-                if(an!==null && bn!==null) return an-bn;
-                if(an!==null) return -1; if(bn!==null) return 1;
-                return a.n.localeCompare(b.n);
-            });
-
-            const mkCard = l => {
-                const lid = locId(l);
-                const c = document.createElement('div');
-                c.className = 'card';
-
-                if(l.special) {
-                    c.innerHTML = `<div class="card-name" style="color:var(--purple);">📍 ${l.n}</div><div class="card-addr" style="cursor:pointer;text-decoration:underline;" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}','_blank')">${l.a}</div>`;
-                    c.style.borderColor = 'var(--purple)';
-                    c.onclick = () => map.setView([l.t, l.g], 15);
-                    return c;
-                }
-
-                const d = data[lid];
-                const open = getOpenTicket(d);
-                const all = getSortedTickets(d);
-                const archivedCount = all.filter(t => t.archived).length;
-
-                // Filter status: open ticket wins, otherwise fall back to most recent archived
-                const effectiveStatus = getEffectiveStatus(d);
-                c.dataset.filterStatus = (effectiveStatus === 'blue' || effectiveStatus === 'none') ? 'none' : effectiveStatus;
-
-                // Card border reflects open ticket status
-                c.style.borderColor = open ? statusColor(open.s || 'blue') : 'var(--border)';
-
-                // Badge row
-                let metaHtml = '';
-                if(open) {
-                    metaHtml = `<span class="badge-status status-${open.s}">${statusLabel(open.s)}</span>`;
-                    if(archivedCount > 0) {
-                        metaHtml += `<span class="ticket-badge badge-none" style="font-size:10px;">+${archivedCount} archived</span>`;
-                    }
-                } else if(all.length > 0) {
-                    metaHtml = `<span class="ticket-badge badge-none">${archivedCount} archived</span>`;
-                } else {
-                    metaHtml = `<span class="ticket-badge badge-none">No tickets</span>`;
-                }
-
-                c.innerHTML = `<div class="card-name">${l.n}</div><div class="card-addr">${l.a}</div><div class="card-meta">${metaHtml}</div>`;
-                c.onclick = () => {
-                    if(window.innerWidth <= 699) {
-                        openMobilePanel(l);
-                    } else {
-                        map.setView([l.t, l.g], 13);
-                        setTimeout(() => markers[lid]?.m.openPopup(), 100);
-                    }
-                };
-                return c;
-            };
-
-            const list = document.getElementById('list');
-            list.innerHTML = '';
-
-            const c1 = document.createElement('div');
-            c1.className = 'location-column';
-            c1.innerHTML = '<div class="column-header">Fast Food</div>';
-            specialFF.forEach(l => c1.appendChild(mkCard(l)));
-            ff.forEach(l => c1.appendChild(mkCard(l)));
-
-            const c2 = document.createElement('div');
-            c2.className = 'location-column';
-            c2.innerHTML = '<div class="column-header">C-Store</div>';
-            specialCS.forEach(l => c2.appendChild(mkCard(l)));
-            cs.forEach(l => c2.appendChild(mkCard(l)));
-
-            list.appendChild(c1);
-            list.appendChild(c2);
-
-            // Reapply active filter
-            if(activeFilter) {
-                document.querySelectorAll('.card').forEach(card => {
-                    card.style.display = (card.dataset.filterStatus === activeFilter) ? '' : 'none';
-                });
-            }
-        }
-
-        // ─────────────────────────────────────────
-        // Build panel HTML
-        // ─────────────────────────────────────────
-        function buildPanel(l) {
-            const lid = locId(l);
-            const d = data[lid];
-            const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.a)}`;
-            const all = getSortedTickets(d);
-            const archived = all.filter(t => t.archived);
-            const open = all.find(t => !t.archived) || null;
-            const openId = open ? open.id : null;
-
-            let html = `<div class="panel">
-                <div class="panel-title">${l.n}</div>
-                <div class="panel-addr" onclick="window.open('${mapsUrl}','_blank')">📍 ${l.a}</div>`;
-
-            // ── Archived history ──
-            if(archived.length > 0) {
-                html += `<div class="history-section">
-                    <div class="history-header">📁 Ticket History (${archived.length})</div>`;
-
-                archived.forEach((t, idx) => {
-                    const displayNum = idx + 1;
-                    const displayDate = t.v || (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'No date');
-                    const notes = t.notes || [];
-
-                    let notesHtml = notes.map(n => `
-                        <div class="archived-note">
-                            <div class="archived-note-date">${new Date(n.t).toLocaleString()}</div>
-                            ${n.n ? `<div class="archived-note-text">${n.n}</div>` : ''}
-                            ${n.photoUrl ? `<div class="archived-note-photo"><img src="${n.photoUrl}" onclick="window.open('${n.photoUrl}','_blank')" title="Click to open full size"></div>` : ''}
-                        </div>`).join('');
-
-                    html += `<div class="archived-ticket">
-                        <div class="archived-ticket-header" onclick="this.nextElementSibling.classList.toggle('open')">
-                            <span class="archived-ticket-label">Ticket #${displayNum} — ${displayDate}</span>
-                            <span class="badge-status status-${t.s}" style="font-size:10px;">${statusLabel(t.s)}</span>
-                        </div>
-                        <div class="archived-ticket-body">
-                            ${t.issue ? `<div class="archived-field"><div class="archived-field-label">Issue</div><div class="archived-field-value">${t.issue}</div></div>` : ''}
-                            ${notesHtml ? `<div class="archived-field"><div class="archived-field-label">Notes</div>${notesHtml}</div>` : ''}
-                            ${!t.issue && !notesHtml ? `<div style="color:var(--text2);font-size:12px;">No details recorded.</div>` : ''}
-                        </div>
-                    </div>`;
-                });
-
-                html += `</div><hr class="section-divider">`;
-            }
-
-            // ── Active ticket ──
-            if(open) {
-                const notes = open.notes || [];
-                const notesListHtml = notes.map(n => `
-                    <div class="note-item">
-                        <div class="note-item-date">${new Date(n.t).toLocaleString()}</div>
-                        ${n.n ? `<div class="note-item-text">${n.n}</div>` : ''}
-                        ${n.photoUrl ? `<div class="note-item-photo"><img src="${n.photoUrl}" onclick="window.open('${n.photoUrl}','_blank')" title="Click for full size"></div>` : ''}
-                    </div>`).join('');
-
-                html += `<div class="active-ticket-section">
-                    <div class="active-ticket-label">🎫 Active Ticket</div>
-                    <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <select class="form-select" id="tk-s-${lid}" onchange="window.previewStatus('${lid}')">
-                            <option value="blue"      ${open.s==='blue'?      'selected':''}>No Issues</option>
-                            <option value="red"       ${open.s==='red'?       'selected':''}>Not Started</option>
-                            <option value="yellow"    ${open.s==='yellow'?    'selected':''}>In Progress</option>
-                            <option value="darkgreen" ${open.s==='darkgreen'? 'selected':''}>Done &amp; Unpaid</option>
-                            <option value="green"     ${open.s==='green'?     'selected':''}>Done &amp; Paid</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Visit Date</label>
-                        <input type="date" class="form-input" id="tk-v-${lid}" value="${open.v || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Issue Description</label>
-                        <textarea class="form-textarea" id="tk-i-${lid}">${open.issue || ''}</textarea>
-                    </div>
-                    ${notesListHtml ? `<div class="form-label" style="margin-bottom:6px;">Notes</div><div class="notes-list">${notesListHtml}</div>` : ''}
-                    <div class="add-note-area">
-                        <div class="add-note-label">Add Note</div>
-                        <textarea class="add-note-textarea" id="tk-n-${lid}" placeholder="Type a note..."></textarea>
-                        <div class="add-note-photo-row">
-                            <input type="file" accept="image/*" id="tk-f-${lid}" style="display:none" onchange="window.handleNotePhoto('${lid}','${openId}',this)">
-                            <button class="add-note-photo-btn" onclick="document.getElementById('tk-f-${lid}').click()">📎 Attach Photo</button>
-                            <span class="upload-status" id="tk-upload-${lid}"></span>
-                            <img id="tk-img-${lid}" style="display:none" class="note-photo-preview" onclick="window.open(this.src,'_blank')">
-                            <button class="note-photo-clear" id="tk-imgclear-${lid}" style="display:none" onclick="window.clearNotePhoto('${lid}')">✕ remove</button>
-                            <input type="hidden" id="tk-p-${lid}" value="">
-                        </div>
-                    </div>
-                    <div class="btn-group" style="margin-top:10px;">
-                        <button class="btn btn-primary"   onclick="window.saveTicket('${lid}','${openId}')">💾 Save</button>
-                        <button class="btn btn-success"   onclick="window.archiveTicket('${lid}','${openId}')">✓ Close Ticket</button>
-                        <button class="btn btn-danger"    onclick="window.deleteTicket('${lid}','${openId}')">🗑</button>
-                    </div>
-                </div>`;
-            } else {
-                html += `<button class="btn-new-ticket" onclick="window.createTicket('${lid}')">＋ Open New Ticket</button>`;
-            }
-
-            html += `</div>`;
-            return html;
-        }
-
-        // ─────────────────────────────────────────
-        // Markers
-        // ─────────────────────────────────────────
-        function addMarkers() {
-            locs.forEach(l => {
-                const lid = locId(l);
-                if(l.special) {
-                    const m = L.circleMarker([l.t, l.g], { radius:10, fillColor:'#a855f7', fillOpacity:1, color:'#fff', weight:2 }).addTo(map);
-                    markers[lid] = {m, l};
-                } else {
-                    const m = L.circleMarker([l.t, l.g], {
-                        radius:8, fillColor: getMarkerColor(data[lid]), fillOpacity:1, color:'#fff', weight:2
-                    }).addTo(map).bindPopup('', {maxWidth:390});
-                    m.on('popupopen', () => m.setPopupContent(buildPanel(l)));
-                    markers[lid] = {m, l};
-                }
-            });
-        }
-
-        function updateMarker(lid) {
-            if(markers[lid] && !markers[lid].l.special) {
-                markers[lid].m.setStyle({ fillColor: getMarkerColor(data[lid]) });
-            }
-        }
-
-        // ─────────────────────────────────────────
-        // Ticket actions
-        // ─────────────────────────────────────────
-        window.previewStatus = function(lid) {
-            const el = document.getElementById(`tk-s-${lid}`);
-            if(el && markers[lid]) markers[lid].m.setStyle({ fillColor: statusColor(el.value) });
-        };
-
-        window.saveTicket = async function(lid, tkId) {
-            try {
-                const existing = data[lid]?.tickets?.[tkId] || {};
-                const notes = [...(existing.notes || [])];
-
-                const noteText = document.getElementById(`tk-n-${lid}`)?.value.trim() || '';
-                const photoUrl = document.getElementById(`tk-p-${lid}`)?.value || '';
-                if(noteText || photoUrl) {
-                    const newNote = { n: noteText, t: new Date().toISOString() };
-                    if(photoUrl) newNote.photoUrl = photoUrl;
-                    notes.push(newNote);
-                }
-
-                const updated = {
-                    ...existing,
-                    s:     document.getElementById(`tk-s-${lid}`).value,
-                    v:     document.getElementById(`tk-v-${lid}`).value,
-                    issue: document.getElementById(`tk-i-${lid}`).value,
-                    notes
-                };
-
-                await set(ref(db, `jobs/${lid}/tickets/${tkId}`), updated);
-                alert('✓ Saved!');
-            } catch(err) {
-                alert('Error saving: ' + err.message);
-            }
-        };
-
-        window.archiveTicket = async function(lid, tkId) {
-            if(!confirm('Close and archive this ticket? It will remain visible in the ticket history.')) return;
-            try {
-                const existing = data[lid]?.tickets?.[tkId] || {};
-                const notes = [...(existing.notes || [])];
-                const noteText = document.getElementById(`tk-n-${lid}`)?.value.trim() || '';
-                const photoUrl = document.getElementById(`tk-p-${lid}`)?.value || '';
-                if(noteText || photoUrl) {
-                    const newNote = { n: noteText, t: new Date().toISOString() };
-                    if(photoUrl) newNote.photoUrl = photoUrl;
-                    notes.push(newNote);
-                }
-                const updated = {
-                    ...existing,
-                    s:          document.getElementById(`tk-s-${lid}`)?.value  || existing.s,
-                    v:          document.getElementById(`tk-v-${lid}`)?.value  || existing.v,
-                    issue:      document.getElementById(`tk-i-${lid}`)?.value  || existing.issue,
-                    notes,
-                    archived:   true,
-                    archivedAt: new Date().toISOString()
-                };
-                await set(ref(db, `jobs/${lid}/tickets/${tkId}`), updated);
-                markers[lid]?.m.closePopup();
-                window.closeModal();
-            } catch(err) {
-                alert('Error closing ticket: ' + err.message);
-            }
-        };
-
-        window.deleteTicket = async function(lid, tkId) {
-            if(!confirm('Permanently delete this ticket? This cannot be undone.')) return;
-            try {
-                await set(ref(db, `jobs/${lid}/tickets/${tkId}`), null);
-                markers[lid]?.m.closePopup();
-                window.closeModal();
-            } catch(err) {
-                alert('Error deleting: ' + err.message);
-            }
-        };
-
-        window.createTicket = async function(lid) {
-            try {
-                const tkId = newTicketId();
-                const ticket = { s:'red', v:'', issue:'', notes:[], archived:false, createdAt: new Date().toISOString() };
-                await set(ref(db, `jobs/${lid}/tickets/${tkId}`), ticket);
-            } catch(err) {
-                alert('Error creating ticket: ' + err.message);
-            }
-        };
-
-        // ─────────────────────────────────────────
-        // Per-note photo upload (imgbb)
-        // ─────────────────────────────────────────
-        window.handleNotePhoto = async function(lid, tkId, inputEl) {
-            const file = inputEl.files?.[0];
-            if(!file) return;
-            if(!file.type.startsWith('image/')) { alert('Please choose an image file.'); inputEl.value=''; return; }
-
-            const statusEl  = document.getElementById(`tk-upload-${lid}`);
-            const imgEl     = document.getElementById(`tk-img-${lid}`);
-            const hiddenEl  = document.getElementById(`tk-p-${lid}`);
-            const clearBtn  = document.getElementById(`tk-imgclear-${lid}`);
-
-            statusEl.textContent = 'Uploading…';
-            const localUrl = URL.createObjectURL(file);
-            imgEl.src = localUrl;
-            imgEl.style.display = '';
-            imgEl.style.opacity = '0.5';
-
-            try {
-                const formData = new FormData();
-                formData.append('image', file);
-                const res  = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method:'POST', body:formData });
-                const json = await res.json();
-                if(!json.success) throw new Error(json.error?.message || 'Upload failed');
-
-                hiddenEl.value       = json.data.url;
-                imgEl.src            = json.data.url;
-                imgEl.style.opacity  = '1';
-                clearBtn.style.display = '';
-                statusEl.textContent = '✓ Ready';
-                URL.revokeObjectURL(localUrl);
-            } catch(err) {
-                imgEl.style.display  = 'none';
-                hiddenEl.value       = '';
-                inputEl.value        = '';
-                statusEl.textContent = '';
-                URL.revokeObjectURL(localUrl);
-                alert('Photo upload failed: ' + err.message);
-            }
-        };
-
-        window.clearNotePhoto = function(lid) {
-            document.getElementById(`tk-p-${lid}`).value          = '';
-            document.getElementById(`tk-img-${lid}`).style.display = 'none';
-            document.getElementById(`tk-imgclear-${lid}`).style.display = 'none';
-            document.getElementById(`tk-upload-${lid}`).textContent = '';
-            const f = document.getElementById(`tk-f-${lid}`);
-            if(f) f.value = '';
-        };
-
-        // ─────────────────────────────────────────
-        // Mobile modal
-        // ─────────────────────────────────────────
-        function openMobilePanel(l) {
-            document.getElementById('modal-body').innerHTML = buildPanel(l);
-            document.getElementById('modal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        window.closeModal = function() {
-            document.getElementById('modal').classList.remove('active');
-            document.body.style.overflow = '';
-        };
-
-        window.scrollToTop = function() {
-            document.querySelector('.sidebar')?.scrollTo({ top:0, behavior:'smooth' });
-        };
-
-        // ─────────────────────────────────────────
-        // Firebase real-time listener
-        // ─────────────────────────────────────────
-        onValue(ref(db, 'jobs'), snap => {
-            data = snap.val() || {};
-            Object.keys(markers).forEach(updateMarker);
-            updateStats();
-            renderList();
-
-            // Refresh any open popup
-            Object.values(markers).forEach(mk => {
-                if(mk.m.isPopupOpen()) mk.m.setPopupContent(buildPanel(mk.l));
-            });
-
-            // Refresh mobile modal if open
-            const modal = document.getElementById('modal');
-            if(modal.classList.contains('active')) {
-                const title = modal.querySelector('.panel-title')?.textContent;
-                const l = title ? locs.find(x => x.n === title) : null;
-                if(l) document.getElementById('modal-body').innerHTML = buildPanel(l);
-            }
-        });
-
-        // ─────────────────────────────────────────
-        // Boot
-        // ─────────────────────────────────────────
-        (async () => {
-            await migrateIfNeeded();
-            addMarkers();
-            updateStats();
-            renderList();
-        })();
-    </script>
+    <div class="sheet-b">
+      <div class="fl" style="margin-top:0">Status</div>
+      <div class="status-row">${statusBtns}</div>
+      <div class="fl">Job</div>
+      <div class="val">${cat?`[${esc(cat)}] `:""}${esc(t.description||"(no description)")}</div>
+      ${photoHtml}
+      <div class="fl">Activity</div>
+      <div class="activity">${actHtml}</div>
+      <div class="fl">Comments</div>
+      <div class="notes" id="rmCmts">${cmtHtml}</div>
+      <div class="fl">Add comment</div>
+      <textarea class="note-in" id="rmCmtIn" placeholder="Type a comment…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="rmCmtSend" onclick="window.rmPostComment('${esc(id)}')" style="flex:1;min-width:140px">Post comment</button>
+        <input type="file" accept="image/*" id="rmInvFile" style="display:none" onchange="window.rmUploadInvoice('${esc(id)}',this)">
+        <button class="btn btn-invoice" id="rmInvBtn" onclick="document.getElementById('rmInvFile').click()" style="flex:1;min-width:140px">🧾 Add Invoice</button>
+      </div>
+      <div class="upload-note" id="rmInvStatus"></div>
+      ${siblingHtml}
+    </div>`;
+}
+
+// Repair writes
+window.rmSetStatus=async function(id,s){
+  const t=RM_TICKETS[id]; if(!t||t.status===s) return;
+  const activity=Array.isArray(t.activity)?t.activity.slice():[];
+  activity.push({ts:now(),by:VENDOR_NAME,role:"vendor",action:"status",toStatus:s,note:"via vendor board"});
+  const updated={...t,status:s,activity,updatedAt:now()}; delete updated._id;
+  try{
+    await rmWriteTicket(id,updated);
+    RM_TICKETS[id]=updated; toast("Status → "+rmStatusView(s).label); renderRMSheet(id); render();
+  }catch(e){ toast(e.message||"Update failed","err"); }
+};
+window.rmPostComment=async function(id){
+  const inp=$("rmCmtIn"); const text=(inp&&inp.value||"").trim(); if(!text){toast("Write something first","err");return;}
+  const btn=$("rmCmtSend"); if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
+  const t=RM_TICKETS[id]; if(!t){toast("Ticket not found","err");if(btn){btn.disabled=false;btn.textContent="Post comment";}return;}
+  const comments=Array.isArray(t.comments)?t.comments.slice():[];
+  comments.push({id:uid(),by:VENDOR_NAME,role:"vendor",text,ts:now()});
+  const updated={...t,comments,updatedAt:now()}; delete updated._id;
+  try{
+    await rmWriteTicket(id,updated); RM_TICKETS[id]=updated; toast("Comment posted"); renderRMSheet(id);
+  }catch(e){ toast(e.message||"Failed","err"); }
+  finally{ if(btn){btn.disabled=false;btn.textContent="Post comment";} }
+};
+
+window.rmUploadInvoice=async function(id,inputEl){
+  const file=inputEl.files&&inputEl.files[0]; if(!file) return;
+  if(!file.type.startsWith("image/")){ toast("Invoice must be an image (screenshot is fine).","err"); inputEl.value=""; return; }
+  const status=$("rmInvStatus"); const btn=$("rmInvBtn");
+  if(status) status.textContent="Uploading invoice…"; if(btn) btn.disabled=true;
+  try{
+    const fd=new FormData(); fd.append("image",file);
+    const res=await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,{method:"POST",body:fd});
+    const json=await res.json();
+    if(!json.success) throw new Error((json.error&&json.error.message)||"Upload failed");
+    const url=json.data.url;
+    const t=RM_TICKETS[id];
+    const comments=Array.isArray(t.comments)?t.comments.slice():[];
+    comments.push({id:uid(),by:VENDOR_NAME,role:"vendor",text:"Invoice",ts:now(),invoice:true,fileUrl:url});
+    const updated={...t,comments,updatedAt:now()}; delete updated._id;
+    await rmWriteTicket(id,updated); RM_TICKETS[id]=updated;
+    toast("🧾 Invoice added"); renderRMSheet(id);
+  }catch(e){
+    if(status) status.textContent=""; if(btn) btn.disabled=false;
+    toast("Invoice upload failed: "+(e.message||e),"err");
+  }finally{ inputEl.value=""; }
+};
+
+window.rmDeleteInvoice=async function(id,commentId){
+  const t=RM_TICKETS[id]; if(!t) return;
+  const comments=Array.isArray(t.comments)?t.comments:[];
+  const target=comments.find(c=>c&&c.id===commentId&&c.invoice);
+  if(!target){ toast("Invoice not found","err"); return; }
+  if(!confirm("Delete this invoice? This can't be undone.")) return;
+  const next=comments.filter(c=>!(c&&c.id===commentId&&c.invoice));
+  const updated={...t,comments:next,updatedAt:now()}; delete updated._id;
+  try{
+    await rmWriteTicket(id,updated); RM_TICKETS[id]=updated;
+    toast("Invoice deleted"); renderRMSheet(id);
+  }catch(e){ toast(e.message||"Delete failed","err"); }
+};
+
+window.closeModal=function(){
+  $("modal").classList.remove("on"); document.body.style.overflow=""; openItem=null;
+};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+// Camera: live Firebase listener
+onValue(ref(db,"jobs"),snap=>{
+  CAM_DATA=snap.val()||{};
+  $("poll").textContent="live";
+  render();
+  if(openItem&&openItem.type==="cam"){
+    const active=document.activeElement;
+    const typing=active&&active.id==="noteIn";
+    if(!typing) renderCamSheet(openItem.lid);
+  }
+});
+
+// Repair app: poll every 20s
+async function pollRM(){
+  const dot=$("poll"); dot.textContent="syncing…";
+  try{
+    const typing=document.activeElement&&document.activeElement.id==="rmCmtIn";
+    await loadRM();
+    if(!typing) render();
+    if(openItem&&openItem.type==="rm"&&!typing) renderRMSheet(openItem.id);
+  }catch(e){ console.warn("RM poll failed:",e.message); }
+  dot.textContent="live";
+}
+pollRM();
+setInterval(pollRM,POLL_MS);
+</script>
 </body>
 </html>
