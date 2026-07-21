@@ -42,6 +42,10 @@
   .card:hover{border-color:var(--blue);transform:translateY(-1px)}
   .card-name{font-size:14px;font-weight:700;margin-bottom:4px;line-height:1.3;overflow-wrap:anywhere}
   .card-sub{font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.4;overflow-wrap:anywhere}
+  a.addr-link{color:var(--blue);text-decoration:none;cursor:pointer;display:inline-block}
+  a.addr-link:hover{text-decoration:underline}
+  a.card-sub.addr-link{display:block}
+  .addr-pin{white-space:nowrap}
   .card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .empty{text-align:center;color:var(--text2);font-size:13px;padding:24px 0}
 
@@ -273,6 +277,10 @@ FULL_LOCS.forEach(l => { LOC_MAP[locId(l)] = l; });
 function locName(lid){ return (LOC_MAP[lid]&&LOC_MAP[lid].n)||lid; }
 function locAddr(lid){ return (LOC_MAP[lid]&&LOC_MAP[lid].a)||""; }
 function isSpecial(lid){ return !!(LOC_MAP[lid]&&LOC_MAP[lid].special); }
+// Each location carries its exact GPS coords (t=lat, g=lng). Build a maps link
+// that opens the device's default map app for turn-by-turn navigation.
+function locLL(lid){ const l=LOC_MAP[lid]; return (l&&typeof l.t==="number"&&typeof l.g==="number")?{lat:l.t,lng:l.g}:null; }
+function mapsUrl(lid){ const ll=locLL(lid); return ll?`https://www.google.com/maps/search/?api=1&query=${ll.lat},${ll.lng}`:""; }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let CAM_DATA   = {};   // locId → Firebase jobs node (camera tickets)
@@ -435,7 +443,7 @@ function render(){
     const histBadge=!e.isOpen?`<span class="badge s-none">📁 History</span>`:"";
     return `<div class="card" onclick="window.openCam('${esc(e.lid)}')">
       <div class="card-name">${esc(locName(e.lid))}</div>
-      ${locAddr(e.lid)?`<div class="card-sub">${esc(locAddr(e.lid))}</div>`:""}
+      ${locAddr(e.lid)?(mapsUrl(e.lid)?`<a href="${mapsUrl(e.lid)}" target="_blank" rel="noopener" class="card-sub addr-link" onclick="event.stopPropagation()">${esc(locAddr(e.lid))} <span class="addr-pin">📍</span></a>`:`<div class="card-sub">${esc(locAddr(e.lid))}</div>`):""}
       <div class="card-meta">${statusBadge}${dateBadge}${histBadge}</div>
     </div>`;
   };
@@ -541,7 +549,7 @@ function renderCamSheet(lid){
       <div style="font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:12px">
         📋 Historical record from camera tracker — view only. New jobs come through the repair app.
       </div>
-      <div class="fl" style="margin-top:0">Address</div><div class="val">${esc(locAddr(lid)||"—")}</div>
+      <div class="fl" style="margin-top:0">Address</div><div class="val">${(function(){const a=locAddr(lid);const u=mapsUrl(lid);if(!a&&!u)return "—";if(u)return `<a href="${u}" target="_blank" rel="noopener" class="addr-link">${esc(a||"Open in Maps")} <span class="addr-pin">📍</span></a>`;return esc(a);})()}</div>
       ${histHtml}${openHtml}
     </div>`;
 }
