@@ -288,7 +288,7 @@ let RM_TICKETS = {};   // ticketId → repair app ticket object
 let RM_KEY     = null; // resolved vendor key for write-backs
 let RM_RESTS   = {};   // storeId → restaurant record (for store names)
 
-let curFilter  = null;
+let curFilter  = "ns";
 let curSearch  = "";
 let openItem   = null; // { type:"cam"|"rm", id, tkId? }
 
@@ -326,6 +326,27 @@ function camUrgency(s){ return (CAM_STATUS[s||"red"]||{urgency:0}).urgency; }
 
 // ── Repair app helpers ────────────────────────────────────────────────────────
 function rmStoreName(sid){ return (RM_RESTS[sid]&&RM_RESTS[sid].storeName)||sid||"Unknown store"; }
+function rmStoreAddr(sid){ const r=RM_RESTS[sid]; return (r&&(r.address||r.storeAddress))||""; }
+// Build a name→camera-location and address→camera-location index so repair-app
+// stores can inherit exact GPS coords from the camera location table.
+const _normAddr=s=>String(s||"").toLowerCase().replace(/[.,#]/g,"").replace(/\s+/g," ").trim();
+const _normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const LOC_BY_ADDR={}, LOC_BY_NAME={};
+FULL_LOCS.forEach(l=>{ if(l.a) LOC_BY_ADDR[_normAddr(l.a)]=l; if(l.n) LOC_BY_NAME[_normName(l.n)]=l; });
+// GPS for a repair store: prefer its own lat/lng, else match a camera location by
+// address or name, else fall back to a text address query so the pin still works.
+function rmMapsUrl(sid){
+  const r=RM_RESTS[sid]||{};
+  const lat=r.lat!=null?r.lat:(r.latitude!=null?r.latitude:null);
+  const lng=r.lng!=null?r.lng:(r.longitude!=null?r.longitude:null);
+  if(typeof lat==="number"&&typeof lng==="number") return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  const addr=rmStoreAddr(sid);
+  let m = addr && LOC_BY_ADDR[_normAddr(addr)];
+  if(!m){ const nm=rmStoreName(sid); m=LOC_BY_NAME[_normName(nm)]; }
+  if(m) return `https://www.google.com/maps/search/?api=1&query=${m.t},${m.g}`;
+  if(addr) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
+  return "";
+}
 function rmUrgency(s){ return (RM_STATUS[s]||{urgency:0}).urgency; }
 function rmStatusView(s){
   if(RM_STATUS[s]) return RM_STATUS[s];
@@ -379,7 +400,7 @@ function renderStats(){
     {key:"dap", label:"Done & Paid",   color:"green"},
   ];
   $("stats").innerHTML = items.map(it=>`
-    <div class="stat" onclick="window.toggleFilter('${it.key}')">
+    <div class="stat${curFilter===it.key?" active":""}" onclick="window.toggleFilter('${it.key}')">
       <div class="stat-num" style="color:var(--${it.color})">${counts[it.key]}</div>
       <div class="stat-label">${esc(it.label)}</div></div>`).join("");
 }
@@ -431,7 +452,7 @@ function render(){
   // ── Render list ──
   const list=$("list");
   if(!camEntries.length&&!rmEntries.length){
-    list.innerHTML=`<div class="empty">No jobs${curFilter||curSearch?" match this view":""} assigned yet.</div>`;
+    list.innerHTML=`<div class="empty">No jobs match this view.</div>`;
     return;
   }
 
@@ -451,9 +472,14 @@ function render(){
   const mkRmCard=({id,t})=>{
     const sv=rmStatusView(t.status);
     const cat=t.category?t.category.charAt(0).toUpperCase()+t.category.slice(1):"";
+    const addr=rmStoreAddr(t.storeId), mu=rmMapsUrl(t.storeId);
+    const addrHtml=(addr||mu)
+      ? `<a href="${mu}" target="_blank" rel="noopener" class="card-sub addr-link" onclick="event.stopPropagation()">${esc(addr||"Open in Maps")} <span class="addr-pin">📍</span></a>`
+      : "";
     return `<div class="card" onclick="window.openRM('${esc(id)}')">
       <div class="card-name">${esc(rmStoreName(t.storeId))}${t.shortId?` <span style="color:var(--text2);font-weight:400;font-size:11px">#${esc(t.shortId)}</span>`:""}
       </div>
+      ${addrHtml}
       ${t.description?`<div class="card-sub">${cat?`[${esc(cat)}] `:""}${esc((t.description||"").slice(0,60))}${(t.description||"").length>60?"…":""}</div>`:""}
       <div class="card-meta"><span class="badge s-${sv.cls}">${esc(sv.label)}</span></div>
     </div>`;
@@ -478,7 +504,7 @@ function render(){
   $("boardSub").textContent=`${rmOpen+camOpen} active job${(rmOpen+camOpen)===1?"":"s"} · repair ${rmOpen} · camera ${camOpen}`;
 }
 
-window.toggleFilter=function(k){ curFilter=curFilter===k?null:k; render(); };
+window.toggleFilter=function(k){ if(curFilter===k) return; curFilter=k; render(); };
 window.onSearch=function(v){ curSearch=(v||"").trim(); render(); };
 window.lightbox=function(u){ $("lightboxImg").src=u; $("lightbox").classList.add("on"); };
 
@@ -610,7 +636,9 @@ function renderRMSheet(id){
       <button class="x" onclick="window.closeModal()">✕ Close</button>
     </div>
     <div class="sheet-b">
-      <div class="fl" style="margin-top:0">Status</div>
+      <div class="fl" style="margin-top:0">Address</div>
+      <div class="val">${(function(){const a=rmStoreAddr(t.storeId),u=rmMapsUrl(t.storeId);if(!a&&!u)return "—";if(u)return `<a href="${u}" target="_blank" rel="noopener" class="addr-link">${esc(a||"Open in Maps")} <span class="addr-pin">📍</span></a>`;return esc(a);})()}</div>
+      <div class="fl">Status</div>
       <div class="status-row">${statusBtns}</div>
       <div class="fl">Job</div>
       <div class="val">${cat?`[${esc(cat)}] `:""}${esc(t.description||"(no description)")}</div>
