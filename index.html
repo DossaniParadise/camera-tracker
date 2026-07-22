@@ -154,9 +154,39 @@
     .card-grid{grid-template-columns:1fr}
   }
   @media(max-width:380px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+  /* ── Map layout (desktop / tablet / phone portrait / phone landscape) ── */
+  .container{display:grid;grid-template-columns:1fr 500px;height:100vh}
+  .map-section{position:relative}
+  #map{width:100%;height:100%;filter:brightness(0.9)}
+  .sidebar{overflow-y:auto}
+  .leaflet-popup-content-wrapper{background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:10px;font-family:inherit}
+  .leaflet-popup-content{margin:10px 12px;width:260px !important}
+  .leaflet-popup-tip{background:var(--bg2)}
+  .map-pop-name{font-weight:700;font-size:13px;margin-bottom:4px}
+  .map-pop-addr{font-size:11px;color:var(--text2);margin-bottom:6px}
+  .map-pop-btn{font-size:11px;padding:5px 9px;border-radius:5px;border:1px solid var(--blue);background:var(--bg);color:var(--blue);cursor:pointer;font-family:inherit}
+  @media (max-width:1200px) and (min-width:700px){
+    .container{grid-template-columns:1fr 340px}
+  }
+  @media (max-width:699px) and (orientation:portrait){
+    .container{display:block}
+    .map-section{display:none}
+    .sidebar{width:100%;min-height:100vh;overflow-y:visible}
+  }
+  @media (max-width:699px) and (orientation:landscape){
+    .container{display:block}
+    .sidebar{display:none}
+    .map-section{width:100%;height:100vh}
+    #map{height:100vh}
+  }
 </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+<div class="container">
+<div class="map-section"><div id="map"></div></div>
 <div class="sidebar">
   <div class="poll" id="poll">·</div>
   <h1>Bill Scherzer — Job Board</h1>
@@ -166,6 +196,7 @@
     <input class="search-input" id="search" placeholder="🔍 Search location or job…" oninput="onSearch(this.value)">
   </div>
   <div id="list"><div class="empty">Loading…</div></div>
+</div>
 </div>
 
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
@@ -405,6 +436,64 @@ function renderStats(){
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
+
+// ── Map ──────────────────────────────────────────────────────────────────────
+// A marker per location. Camera locations use their own coords; repair stores
+// use the API's (string) lat/lng. Marker colour tracks job status; clicking a
+// marker opens the same detail sheet the list cards open.
+let MAP=null, MARKERS={};
+const STATUS_HEX={red:"#ff6b6b",yellow:"#ffd93d",darkgreen:"#2d7a4f",green:"#6bcf7f",none:"#6b7280"};
+const RM_HEX={dispatched:"#ff6b6b",in_progress:"#ffd93d",finished:"#2d7a4f",closed:"#6bcf7f"};
+
+function initMap(){
+  if(MAP||typeof L==="undefined") return;
+  const el=document.getElementById("map"); if(!el) return;
+  MAP=L.map("map",{zoomControl:true}).setView([32.9413,-97.0731],9);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:20,attribution:"© OpenStreetMap"}).addTo(MAP);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",{maxZoom:20}).addTo(MAP);
+}
+
+function clearMarkers(){ Object.values(MARKERS).forEach(m=>{try{MAP.removeLayer(m)}catch(e){}}); MARKERS={}; }
+
+function renderMap(){
+  if(!MAP) return;
+  clearMarkers();
+  const pts=[];
+
+  // Camera locations
+  Object.entries(CAM_DATA).forEach(([lid,locData])=>{
+    if(isSpecial(lid)) return;
+    const l=LOC_MAP[lid]; if(!l||typeof l.t!=="number") return;
+    const et=camEffective(locData); if(!et) return;
+    if(curFilter){ const fMap={ns:"red",ip:"yellow",dup:"darkgreen",dap:"green"};
+      if(!et.isOpen||et.ticket.s!==fMap[curFilter]) return; }
+    const col=et.isOpen?(STATUS_HEX[et.ticket.s]||STATUS_HEX.none):STATUS_HEX.none;
+    const m=L.circleMarker([l.t,l.g],{radius:8,fillColor:col,fillOpacity:1,color:"#fff",weight:2}).addTo(MAP);
+    m.bindPopup(`<div class="map-pop-name">${esc(locName(lid))}</div>`+
+      (locAddr(lid)?`<div class="map-pop-addr">${esc(locAddr(lid))}</div>`:"")+
+      `<button class="map-pop-btn" onclick="window.openCam('${esc(lid)}')">Open job</button>`);
+    MARKERS["cam:"+lid]=m; pts.push([l.t,l.g]);
+  });
+
+  // Repair stores
+  const fRm={ns:"dispatched",ip:"in_progress",dup:"finished",dap:"closed"};
+  Object.entries(RM_TICKETS).forEach(([id,t])=>{
+    if(!RM_STATUS[t.status]) return;
+    if(curFilter && t.status!==fRm[curFilter]) return;
+    const r=RM_RESTS[t.storeId]||{};
+    const lat=parseFloat(r.latitude!=null?r.latitude:r.lat);
+    const lng=parseFloat(r.longitude!=null?r.longitude:r.lng);
+    if(!isFinite(lat)||!isFinite(lng)) return;
+    const m=L.circleMarker([lat,lng],{radius:8,fillColor:(RM_HEX[t.status]||STATUS_HEX.none),fillOpacity:1,color:"#fff",weight:2}).addTo(MAP);
+    m.bindPopup(`<div class="map-pop-name">🔧 ${esc(rmStoreName(t.storeId))}</div>`+
+      (rmStoreAddr(t.storeId)?`<div class="map-pop-addr">${esc(rmStoreAddr(t.storeId))}</div>`:"")+
+      `<button class="map-pop-btn" onclick="window.openRM('${esc(id)}')">Open job</button>`);
+    MARKERS["rm:"+id]=m; pts.push([lat,lng]);
+  });
+
+  if(pts.length){ try{ MAP.fitBounds(pts,{padding:[40,40],maxZoom:12}); }catch(e){} }
+}
+
 function render(){
   renderStats();
   const q = curSearch.toLowerCase();
@@ -499,6 +588,7 @@ function render(){
     const lid=Object.keys(CAM_DATA)[i]; return !isSpecial(lid)&&getOpenTicket(CAM_DATA[lid]);
   }).length;
   $("boardSub").textContent=`${rmOpen+camOpen} active job${(rmOpen+camOpen)===1?"":"s"} · repair ${rmOpen} · camera ${camOpen}`;
+  renderMap();
 }
 
 window.toggleFilter=function(k){ curFilter=curFilter===k?null:k; render(); };
@@ -749,6 +839,7 @@ window.closeModal=function(){
 onValue(ref(db,"jobs"),snap=>{
   CAM_DATA=snap.val()||{};
   $("poll").textContent="live";
+  initMap();
   render();
   if(openItem&&openItem.type==="cam"){
     const active=document.activeElement;
