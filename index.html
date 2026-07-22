@@ -42,10 +42,15 @@
   .card:hover{border-color:var(--blue);transform:translateY(-1px)}
   .card-name{font-size:14px;font-weight:700;margin-bottom:4px;line-height:1.3;overflow-wrap:anywhere}
   .card-sub{font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.4;overflow-wrap:anywhere}
-  a.addr-link{color:var(--blue);text-decoration:none;cursor:pointer;display:inline-block}
+  .attach-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .attach-btn{font-size:11px;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer;font-family:inherit}
+  .attach-btn:hover{border-color:var(--blue);color:var(--blue)}
+  .inv-toggle{font-size:11px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:4px}
+  .upload-status{font-size:11px;color:var(--text2)}
+  .photo-preview{width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer}
+  .photo-clear{font-size:11px;color:var(--red);cursor:pointer;background:none;border:none;font-family:inherit}
+  a.addr-link{color:var(--blue);text-decoration:none;cursor:pointer;display:block}
   a.addr-link:hover{text-decoration:underline}
-  a.card-sub.addr-link{display:block}
-  .addr-pin{white-space:nowrap}
   .entity-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 5px;margin-bottom:4px}
   .card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .empty{text-align:center;color:var(--text2);font-size:13px;padding:24px 0}
@@ -278,10 +283,24 @@ FULL_LOCS.forEach(l => { LOC_MAP[locId(l)] = l; });
 function locName(lid){ return (LOC_MAP[lid]&&LOC_MAP[lid].n)||lid; }
 function locAddr(lid){ return (LOC_MAP[lid]&&LOC_MAP[lid].a)||""; }
 function isSpecial(lid){ return !!(LOC_MAP[lid]&&LOC_MAP[lid].special); }
-// Each location carries its exact GPS coords (t=lat, g=lng). Build a maps link
-// that opens the device's default map app for turn-by-turn navigation.
-function locLL(lid){ const l=LOC_MAP[lid]; return (l&&typeof l.t==="number"&&typeof l.g==="number")?{lat:l.t,lng:l.g}:null; }
-function mapsUrl(lid){ const ll=locLL(lid); return ll?`https://www.google.com/maps/search/?api=1&query=${ll.lat},${ll.lng}`:""; }
+// GPS. Camera locations carry exact coords (t=lat, g=lng). Repair stores come
+// from the API, which sends latitude/longitude as STRINGS - coerce before use.
+function mapsUrl(lid){ const l=LOC_MAP[lid]; return (l&&typeof l.t==="number"&&typeof l.g==="number")?`https://www.google.com/maps/search/?api=1&query=${l.t},${l.g}`:""; }
+function rmStoreAddr(sid){ const r=RM_RESTS[sid]; return (r&&(r.address||r.storeAddress))||""; }
+function rmMapsUrl(sid){
+  const r=RM_RESTS[sid]||{};
+  const lat=parseFloat(r.latitude!=null?r.latitude:r.lat);
+  const lng=parseFloat(r.longitude!=null?r.longitude:r.lng);
+  if(isFinite(lat)&&isFinite(lng)) return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  const ad=rmStoreAddr(sid);
+  return ad?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ad)}`:"";
+}
+function rmStoreEntity(sid){
+  const r=RM_RESTS[sid]||{};
+  if(r.entity||r.brand||r.concept) return r.entity||r.brand||r.concept;
+  const m=(r.storeName||"").match(/^\s*(.+?)\s*#/);
+  return m?m[1].trim():"";
+}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let CAM_DATA   = {};   // locId → Firebase jobs node (camera tickets)
@@ -327,35 +346,6 @@ function camUrgency(s){ return (CAM_STATUS[s||"red"]||{urgency:0}).urgency; }
 
 // ── Repair app helpers ────────────────────────────────────────────────────────
 function rmStoreName(sid){ return (RM_RESTS[sid]&&RM_RESTS[sid].storeName)||sid||"Unknown store"; }
-function rmStoreAddr(sid){ const r=RM_RESTS[sid]; return (r&&(r.address||r.storeAddress))||""; }
-// Entity (brand) derived from the store name, e.g. "Burger King #23086 Atlanta".
-function rmStoreEntity(sid){
-  const r=RM_RESTS[sid]||{};
-  if(r.entity||r.brand||r.concept) return r.entity||r.brand||r.concept;
-  const m=(r.storeName||"").match(/^\s*(.+?)\s*#/);
-  return m?m[1].trim():"";
-}
-// Build a name→camera-location and address→camera-location index so repair-app
-// stores can inherit exact GPS coords from the camera location table.
-const _normAddr=s=>String(s||"").toLowerCase().replace(/[.,#]/g,"").replace(/\s+/g," ").trim();
-const _normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-const LOC_BY_ADDR={}, LOC_BY_NAME={};
-FULL_LOCS.forEach(l=>{ if(l.a) LOC_BY_ADDR[_normAddr(l.a)]=l; if(l.n) LOC_BY_NAME[_normName(l.n)]=l; });
-// GPS for a repair store: prefer its own lat/lng, else match a camera location by
-// address or name, else fall back to a text address query so the pin still works.
-function rmMapsUrl(sid){
-  const r=RM_RESTS[sid]||{};
-  // The API sends latitude/longitude as STRINGS — coerce before using them.
-  const lat=parseFloat(r.latitude!=null?r.latitude:r.lat);
-  const lng=parseFloat(r.longitude!=null?r.longitude:r.lng);
-  if(isFinite(lat)&&isFinite(lng)) return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  const addr=rmStoreAddr(sid);
-  let m = addr && LOC_BY_ADDR[_normAddr(addr)];
-  if(!m){ const nm=rmStoreName(sid); m=LOC_BY_NAME[_normName(nm)]; }
-  if(m) return `https://www.google.com/maps/search/?api=1&query=${m.t},${m.g}`;
-  if(addr) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
-  return "";
-}
 function rmUrgency(s){ return (RM_STATUS[s]||{urgency:0}).urgency; }
 function rmStatusView(s){
   if(RM_STATUS[s]) return RM_STATUS[s];
@@ -461,7 +451,7 @@ function render(){
   // ── Render list ──
   const list=$("list");
   if(!camEntries.length&&!rmEntries.length){
-    list.innerHTML=`<div class="empty">No jobs match this view.</div>`;
+    list.innerHTML=`<div class="empty">No jobs${curFilter||curSearch?" match this view":""} assigned yet.</div>`;
     return;
   }
 
@@ -473,7 +463,7 @@ function render(){
     const histBadge=!e.isOpen?`<span class="badge s-none">📁 History</span>`:"";
     return `<div class="card" onclick="window.openCam('${esc(e.lid)}')">
       <div class="card-name">${esc(locName(e.lid))}</div>
-      ${locAddr(e.lid)?(mapsUrl(e.lid)?`<a href="${mapsUrl(e.lid)}" target="_blank" rel="noopener" class="card-sub addr-link" onclick="event.stopPropagation()">${esc(locAddr(e.lid))} <span class="addr-pin">📍</span></a>`:`<div class="card-sub">${esc(locAddr(e.lid))}</div>`):""}
+      ${locAddr(e.lid)?(mapsUrl(e.lid)?`<a href="${mapsUrl(e.lid)}" target="_blank" rel="noopener" class="card-sub addr-link" onclick="event.stopPropagation()">📍 ${esc(locAddr(e.lid))}</a>`:`<div class="card-sub">${esc(locAddr(e.lid))}</div>`):""}
       <div class="card-meta">${statusBadge}${dateBadge}${histBadge}</div>
     </div>`;
   };
@@ -481,16 +471,13 @@ function render(){
   const mkRmCard=({id,t})=>{
     const sv=rmStatusView(t.status);
     const cat=t.category?t.category.charAt(0).toUpperCase()+t.category.slice(1):"";
-    const addr=rmStoreAddr(t.storeId), mu=rmMapsUrl(t.storeId);
-    const addrHtml=(addr||mu)
-      ? `<a href="${mu}" target="_blank" rel="noopener" class="card-sub addr-link" onclick="event.stopPropagation()">${esc(addr||"Open in Maps")} <span class="addr-pin">📍</span></a>`
-      : "";
+    const _ad=rmStoreAddr(t.storeId), _mu=rmMapsUrl(t.storeId), _en=rmStoreEntity(t.storeId);
     return `<div class="card" onclick="window.openRM('${esc(id)}')">
-      ${rmStoreEntity(t.storeId)?`<div class="entity-tag">${esc(rmStoreEntity(t.storeId))}</div>`:""}
+      ${_en?`<div class="entity-tag">${esc(_en)}</div>`:""}
       <div class="card-name">${esc(rmStoreName(t.storeId))}${t.shortId?` <span style="color:var(--text2);font-weight:400;font-size:11px">#${esc(t.shortId)}</span>`:""}
       </div>
-      ${addrHtml}
       ${t.description?`<div class="card-sub">${cat?`[${esc(cat)}] `:""}${esc((t.description||"").slice(0,60))}${(t.description||"").length>60?"…":""}</div>`:""}
+      ${(_ad||_mu)?`<a href="${_mu}" target="_blank" rel="noopener" class="card-sub addr-link" onclick="event.stopPropagation()">📍 ${esc(_ad||"Open in Maps")}</a>`:""}
       <div class="card-meta"><span class="badge s-${sv.cls}">${esc(sv.label)}</span></div>
     </div>`;
   };
@@ -514,7 +501,7 @@ function render(){
   $("boardSub").textContent=`${rmOpen+camOpen} active job${(rmOpen+camOpen)===1?"":"s"} · repair ${rmOpen} · camera ${camOpen}`;
 }
 
-window.toggleFilter=function(k){ if(curFilter===k) return; curFilter=k; render(); };
+window.toggleFilter=function(k){ curFilter=curFilter===k?null:k; render(); };
 window.onSearch=function(v){ curSearch=(v||"").trim(); render(); };
 window.lightbox=function(u){ $("lightboxImg").src=u; $("lightbox").classList.add("on"); };
 
@@ -585,7 +572,7 @@ function renderCamSheet(lid){
       <div style="font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:12px">
         📋 Historical record from camera tracker — view only. New jobs come through the repair app.
       </div>
-      <div class="fl" style="margin-top:0">Address</div><div class="val">${(function(){const a=locAddr(lid);const u=mapsUrl(lid);if(!a&&!u)return "—";if(u)return `<a href="${u}" target="_blank" rel="noopener" class="addr-link">${esc(a||"Open in Maps")} <span class="addr-pin">📍</span></a>`;return esc(a);})()}</div>
+      <div class="fl" style="margin-top:0">Address</div><div class="val">${(function(){const a2=locAddr(lid),u=mapsUrl(lid);if(!a2&&!u)return "—";if(u)return `<a href="${u}" target="_blank" rel="noopener" class="addr-link">📍 ${esc(a2||"Open in Maps")}</a>`;return esc(a2);})()}</div>
       ${histHtml}${openHtml}
     </div>`;
 }
@@ -647,7 +634,7 @@ function renderRMSheet(id){
     </div>
     <div class="sheet-b">
       <div class="fl" style="margin-top:0">Address</div>
-      <div class="val">${(function(){const a=rmStoreAddr(t.storeId),u=rmMapsUrl(t.storeId);if(!a&&!u)return "—";if(u)return `<a href="${u}" target="_blank" rel="noopener" class="addr-link">${esc(a||"Open in Maps")} <span class="addr-pin">📍</span></a>`;return esc(a);})()}</div>
+      <div class="val">${(function(){const a2=rmStoreAddr(t.storeId),u=rmMapsUrl(t.storeId),en=rmStoreEntity(t.storeId);const tag=en?`<div class="entity-tag">${esc(en)}</div><br>`:"";if(!a2&&!u)return tag+"—";return tag+`<a href="${u}" target="_blank" rel="noopener" class="addr-link">📍 ${esc(a2||"Open in Maps")}</a>`;})()}</div>
       <div class="fl">Status</div>
       <div class="status-row">${statusBtns}</div>
       <div class="fl">Job</div>
@@ -659,17 +646,23 @@ function renderRMSheet(id){
       <div class="notes" id="rmCmts">${cmtHtml}</div>
       <div class="fl">Add comment</div>
       <textarea class="note-in" id="rmCmtIn" placeholder="Type a comment…"></textarea>
+      <div class="attach-row">
+        <input type="file" accept="image/*" id="rmCmtFile" style="display:none" onchange="window.rmAttachPhoto(this)">
+        <button class="attach-btn" onclick="document.getElementById('rmCmtFile').click()">📎 Attach Photo</button>
+        <label class="inv-toggle"><input type="checkbox" id="rmCmtIsInv"> 🧾 invoice</label>
+        <span class="upload-status" id="rmCmtUpload"></span>
+        <img id="rmCmtImg" class="photo-preview" style="display:none" onclick="window.lightbox(this.src)">
+        <button class="photo-clear" id="rmCmtImgClear" style="display:none" onclick="window.rmClearPhoto()">✕ remove</button>
+        <input type="hidden" id="rmCmtPhoto" value="">
+      </div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
         <button class="btn btn-primary" id="rmCmtSend" onclick="window.rmPostComment('${esc(id)}')" style="flex:1;min-width:140px">Post comment</button>
-        <input type="file" accept="image/*" id="rmInvFile" style="display:none" onchange="window.rmUploadInvoice('${esc(id)}',this)">
-        <button class="btn btn-invoice" id="rmInvBtn" onclick="document.getElementById('rmInvFile').click()" style="flex:1;min-width:140px">🧾 Add Invoice</button>
       </div>
       <div class="upload-note" id="rmInvStatus"></div>
       ${siblingHtml}
     </div>`;
 }
 
-// Repair writes
 window.rmSetStatus=async function(id,s){
   const t=RM_TICKETS[id]; if(!t||t.status===s) return;
   const activity=Array.isArray(t.activity)?t.activity.slice():[];
@@ -680,12 +673,19 @@ window.rmSetStatus=async function(id,s){
     RM_TICKETS[id]=updated; toast("Status → "+rmStatusView(s).label); renderRMSheet(id); render();
   }catch(e){ toast(e.message||"Update failed","err"); }
 };
+
 window.rmPostComment=async function(id){
-  const inp=$("rmCmtIn"); const text=(inp&&inp.value||"").trim(); if(!text){toast("Write something first","err");return;}
+  const inp=$("rmCmtIn"); const text=(inp&&inp.value||"").trim();
+  const photoUrl=($("rmCmtPhoto")&&$("rmCmtPhoto").value)||"";
+  const isInv=!!($("rmCmtIsInv")&&$("rmCmtIsInv").checked);
+  if(!text&&!photoUrl){toast("Write something or attach a photo","err");return;}
   const btn=$("rmCmtSend"); if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
   const t=RM_TICKETS[id]; if(!t){toast("Ticket not found","err");if(btn){btn.disabled=false;btn.textContent="Post comment";}return;}
   const comments=Array.isArray(t.comments)?t.comments.slice():[];
-  comments.push({id:uid(),by:VENDOR_NAME,role:"vendor",text,ts:now()});
+  const c={id:uid(),by:VENDOR_NAME,role:"vendor",text:text||(isInv?"Invoice":""),ts:now()};
+  if(photoUrl) c.fileUrl=photoUrl;
+  if(isInv) c.invoice=true;
+  comments.push(c);
   const updated={...t,comments,updatedAt:now()}; delete updated._id;
   try{
     await rmWriteTicket(id,updated); RM_TICKETS[id]=updated; toast("Comment posted"); renderRMSheet(id);
@@ -693,27 +693,37 @@ window.rmPostComment=async function(id){
   finally{ if(btn){btn.disabled=false;btn.textContent="Post comment";} }
 };
 
-window.rmUploadInvoice=async function(id,inputEl){
-  const file=inputEl.files&&inputEl.files[0]; if(!file) return;
-  if(!file.type.startsWith("image/")){ toast("Invoice must be an image (screenshot is fine).","err"); inputEl.value=""; return; }
-  const status=$("rmInvStatus"); const btn=$("rmInvBtn");
-  if(status) status.textContent="Uploading invoice…"; if(btn) btn.disabled=true;
+// Photo attach — uploads immediately, parks URL in a hidden field, and commits
+// with the comment text on Post so any comment can carry a photo.
+window.rmAttachPhoto=async function(inputEl){
+  const file=inputEl.files&&inputEl.files[0];
+  if(!file) return;
+  if(!file.type.startsWith("image/")){ toast("Please choose an image file.","err"); inputEl.value=""; return; }
+  const status=$("rmCmtUpload"), img=$("rmCmtImg"), hidden=$("rmCmtPhoto"), clr=$("rmCmtImgClear");
+  status.textContent="Uploading\u2026";
+  const localUrl=URL.createObjectURL(file);
+  img.src=localUrl; img.style.display=""; img.style.opacity="0.5";
   try{
     const fd=new FormData(); fd.append("image",file);
     const res=await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,{method:"POST",body:fd});
     const json=await res.json();
     if(!json.success) throw new Error((json.error&&json.error.message)||"Upload failed");
-    const url=json.data.url;
-    const t=RM_TICKETS[id];
-    const comments=Array.isArray(t.comments)?t.comments.slice():[];
-    comments.push({id:uid(),by:VENDOR_NAME,role:"vendor",text:"Invoice",ts:now(),invoice:true,fileUrl:url});
-    const updated={...t,comments,updatedAt:now()}; delete updated._id;
-    await rmWriteTicket(id,updated); RM_TICKETS[id]=updated;
-    toast("🧾 Invoice added"); renderRMSheet(id);
+    hidden.value=json.data.url; img.src=json.data.url; img.style.opacity="1";
+    clr.style.display=""; status.textContent="\u2713 Ready";
+    URL.revokeObjectURL(localUrl);
   }catch(e){
-    if(status) status.textContent=""; if(btn) btn.disabled=false;
-    toast("Invoice upload failed: "+(e.message||e),"err");
-  }finally{ inputEl.value=""; }
+    img.style.display="none"; hidden.value=""; inputEl.value=""; status.textContent="";
+    URL.revokeObjectURL(localUrl);
+    toast("Photo upload failed: "+(e.message||e),"err");
+  }
+};
+
+window.rmClearPhoto=function(){
+  const x=$("rmCmtPhoto"); if(x) x.value="";
+  const i=$("rmCmtImg"); if(i) i.style.display="none";
+  const c=$("rmCmtImgClear"); if(c) c.style.display="none";
+  const s2=$("rmCmtUpload"); if(s2) s2.textContent="";
+  const f=$("rmCmtFile"); if(f) f.value="";
 };
 
 window.rmDeleteInvoice=async function(id,commentId){
