@@ -46,6 +46,7 @@
   a.addr-link:hover{text-decoration:underline}
   a.card-sub.addr-link{display:block}
   .addr-pin{white-space:nowrap}
+  .entity-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 5px;margin-bottom:4px}
   .card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .empty{text-align:center;color:var(--text2);font-size:13px;padding:24px 0}
 
@@ -327,6 +328,13 @@ function camUrgency(s){ return (CAM_STATUS[s||"red"]||{urgency:0}).urgency; }
 // ── Repair app helpers ────────────────────────────────────────────────────────
 function rmStoreName(sid){ return (RM_RESTS[sid]&&RM_RESTS[sid].storeName)||sid||"Unknown store"; }
 function rmStoreAddr(sid){ const r=RM_RESTS[sid]; return (r&&(r.address||r.storeAddress))||""; }
+// Entity (brand) derived from the store name, e.g. "Burger King #23086 Atlanta".
+function rmStoreEntity(sid){
+  const r=RM_RESTS[sid]||{};
+  if(r.entity||r.brand||r.concept) return r.entity||r.brand||r.concept;
+  const m=(r.storeName||"").match(/^\s*(.+?)\s*#/);
+  return m?m[1].trim():"";
+}
 // Build a name→camera-location and address→camera-location index so repair-app
 // stores can inherit exact GPS coords from the camera location table.
 const _normAddr=s=>String(s||"").toLowerCase().replace(/[.,#]/g,"").replace(/\s+/g," ").trim();
@@ -337,9 +345,10 @@ FULL_LOCS.forEach(l=>{ if(l.a) LOC_BY_ADDR[_normAddr(l.a)]=l; if(l.n) LOC_BY_NAM
 // address or name, else fall back to a text address query so the pin still works.
 function rmMapsUrl(sid){
   const r=RM_RESTS[sid]||{};
-  const lat=r.lat!=null?r.lat:(r.latitude!=null?r.latitude:null);
-  const lng=r.lng!=null?r.lng:(r.longitude!=null?r.longitude:null);
-  if(typeof lat==="number"&&typeof lng==="number") return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  // The API sends latitude/longitude as STRINGS — coerce before using them.
+  const lat=parseFloat(r.latitude!=null?r.latitude:r.lat);
+  const lng=parseFloat(r.longitude!=null?r.longitude:r.lng);
+  if(isFinite(lat)&&isFinite(lng)) return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   const addr=rmStoreAddr(sid);
   let m = addr && LOC_BY_ADDR[_normAddr(addr)];
   if(!m){ const nm=rmStoreName(sid); m=LOC_BY_NAME[_normName(nm)]; }
@@ -477,6 +486,7 @@ function render(){
       ? `<a href="${mu}" target="_blank" rel="noopener" class="card-sub addr-link" onclick="event.stopPropagation()">${esc(addr||"Open in Maps")} <span class="addr-pin">📍</span></a>`
       : "";
     return `<div class="card" onclick="window.openRM('${esc(id)}')">
+      ${rmStoreEntity(t.storeId)?`<div class="entity-tag">${esc(rmStoreEntity(t.storeId))}</div>`:""}
       <div class="card-name">${esc(rmStoreName(t.storeId))}${t.shortId?` <span style="color:var(--text2);font-weight:400;font-size:11px">#${esc(t.shortId)}</span>`:""}
       </div>
       ${addrHtml}
