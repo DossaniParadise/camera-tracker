@@ -23,7 +23,7 @@
   .section-head:first-child{margin-top:0}
 
   /* Stats bar */
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
   .stat{background:var(--bg2);padding:12px 6px;border-radius:8px;text-align:center;border:1px solid var(--border);cursor:pointer;transition:all .2s;min-width:0;overflow:hidden}
   .stat:hover{transform:translateY(-2px);border-color:var(--blue)}
   .stat.active{border-color:var(--blue)}
@@ -94,6 +94,15 @@
   .status-btn.b-dispatched{color:var(--red)}  .status-btn.b-in_progress{color:var(--yellow)}
   .status-btn.b-finished{color:var(--dg-text)} .status-btn.b-closed{color:var(--green)}
 
+  /* Historical view */
+  .hist-note{font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:12px;line-height:1.5}
+  .hist-note.warn{border-color:var(--yellow);color:var(--yellow)}
+  .hist-loading{text-align:center;color:var(--text2);font-size:13px;padding:20px 0}
+  .showmore{width:100%;margin-top:10px;padding:11px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--blue);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .showmore:hover{border-color:var(--blue)}
+  .src-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;color:var(--text2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;margin-bottom:4px}
+  .ro-banner{font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:12px}
+
   /* Archived history */
   .archived-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden}
   .archived-hdr{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;font-size:12px;flex-wrap:wrap}
@@ -153,6 +162,8 @@
     .stats{gap:8px}
     .card-grid{grid-template-columns:1fr}
   }
+  /* Five tiles need more breakpoints than four did. */
+  @media(max-width:560px){.stats{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:380px){.stats{grid-template-columns:repeat(2,1fr)}}
 
   /* ── Map layout (desktop / tablet / phone portrait / phone landscape) ── */
@@ -317,9 +328,10 @@ function isSpecial(lid){ return !!(LOC_MAP[lid]&&LOC_MAP[lid].special); }
 // GPS. Camera locations carry exact coords (t=lat, g=lng). Repair stores come
 // from the API, which sends latitude/longitude as STRINGS - coerce before use.
 function mapsUrl(lid){ const l=LOC_MAP[lid]; return (l&&typeof l.t==="number"&&typeof l.g==="number")?`https://www.google.com/maps/search/?api=1&query=${l.t},${l.g}`:""; }
-function rmStoreAddr(sid){ const r=RM_RESTS[sid]; return (r&&(r.address||r.storeAddress))||""; }
+function restOf(sid){ return RM_RESTS[sid] || CLOSED_RESTS[sid] || {}; }
+function rmStoreAddr(sid){ const r=restOf(sid); return (r.address||r.storeAddress)||""; }
 function rmMapsUrl(sid){
-  const r=RM_RESTS[sid]||{};
+  const r=restOf(sid);
   const lat=parseFloat(r.latitude!=null?r.latitude:r.lat);
   const lng=parseFloat(r.longitude!=null?r.longitude:r.lng);
   if(isFinite(lat)&&isFinite(lng)) return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -327,7 +339,7 @@ function rmMapsUrl(sid){
   return ad?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ad)}`:"";
 }
 function rmStoreEntity(sid){
-  const r=RM_RESTS[sid]||{};
+  const r=restOf(sid);
   if(r.entity||r.brand||r.concept) return r.entity||r.brand||r.concept;
   const m=(r.storeName||"").match(/^\s*(.+?)\s*#/);
   return m?m[1].trim():"";
@@ -342,6 +354,28 @@ let RM_RESTS   = {};   // storeId → restaurant record (for store names)
 let curFilter  = "ns";
 let curSearch  = "";
 let openItem   = null; // { type:"cam"|"rm", id, tkId? }
+
+// ── Historical state ──────────────────────────────────────────────────────────
+// Closed repair tickets are NOT in the normal vendor payload (the API dropped
+// them in FixMi v2.7.6 — they were ~72% of the response). They are fetched on
+// demand the first time the Historical tile is opened, then cached for the
+// session. See loadClosedRM() for why this is more involved than it looks.
+let CLOSED_RM      = {};    // ticketId → closed ticket belonging to THIS vendor
+let CLOSED_LOADED  = false;
+let CLOSED_AT      = 0;
+let CLOSED_LOADING = false;
+let CLOSED_ERR     = "";
+let CLOSED_SCOPED  = false; // did the API filter by vendor for us?
+let CLOSED_RESTS   = {};    // store records seen only in the closed payload
+const CLOSED_TTL   = 60000; // matches the API's CDN s-maxage
+const HIST_PAGE    = 50;    // rows rendered before "show more"
+let   histShown    = HIST_PAGE;
+
+// Repair statuses that count as a completed job. `finished` (Done & Unpaid)
+// also stays in its own tile — a job awaiting payment is both done and active,
+// so it deliberately appears in both places. Drop it from this list if you'd
+// rather Historical meant strictly "closed".
+const HIST_RM_STATUSES = ["finished","closed"];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -376,7 +410,7 @@ function camEffective(locData){
 function camUrgency(s){ return (CAM_STATUS[s||"red"]||{urgency:0}).urgency; }
 
 // ── Repair app helpers ────────────────────────────────────────────────────────
-function rmStoreName(sid){ return (RM_RESTS[sid]&&RM_RESTS[sid].storeName)||sid||"Unknown store"; }
+function rmStoreName(sid){ return restOf(sid).storeName||sid||"Unknown store"; }
 function rmUrgency(s){ return (RM_STATUS[s]||{urgency:0}).urgency; }
 function rmStatusView(s){
   if(RM_STATUS[s]) return RM_STATUS[s];
@@ -394,6 +428,68 @@ async function loadRM(){
   RM_KEY     = data.vendorKey          || null;
   if(!RM_KEY) $("boardSub").textContent = (($("boardSub").textContent||"")+(" · ⚠ "+VENDOR_NAME+" not found in vendor list")).trim();
 }
+/* Fetch this vendor's closed tickets.
+
+   Verified against the live API on 2026-08-13: `?closed=only` short-circuits
+   and never reaches the vendor branch, so `?vendor=X&closed=only` returns
+   EVERY vendor's closed tickets (514 of them, 14 vendors, 524 KB) with
+   vendorKey:null. We therefore filter to RM_KEY here and discard the rest
+   immediately.
+
+   If you later patch the API to honour both params, nothing here needs to
+   change: a scoped response arrives already filtered, this pass becomes a
+   no-op, and CLOSED_SCOPED flips to true so the bandwidth notice disappears
+   on its own.
+
+   Safety: if RM_KEY is unknown we cannot tell Bill's tickets from anyone
+   else's, so we show an error rather than risk rendering another vendor's
+   jobs on his board. */
+async function loadClosedRM(force){
+  if(CLOSED_LOADING) return;
+  if(!force && CLOSED_LOADED && (now()-CLOSED_AT)<CLOSED_TTL) return;
+
+  CLOSED_LOADING = true; CLOSED_ERR = "";
+  try{
+    const url = `${RM_API}?vendor=${encodeURIComponent(VENDOR_NAME)}&closed=only`;
+    const r = await fetch(url,{cache:"no-store"});
+    if(!r.ok) throw new Error("Could not load closed jobs (HTTP "+r.status+")");
+    const data = await r.json();
+    const all  = data.maintenanceTickets || {};
+
+    // Store records for closed tickets may reference stores absent from the
+    // vendor payload. Merge them in WITHOUT clobbering the scoped copies.
+    if(data.restaurants) CLOSED_RESTS = data.restaurants;
+
+    const key = RM_KEY || data.vendorKey || null;
+    if(!key){
+      throw new Error("Vendor key unresolved — cannot safely identify this vendor's jobs.");
+    }
+
+    const mine = {};
+    let foreign = 0;
+    Object.entries(all).forEach(([id,t])=>{
+      if(!t) return;
+      if(t.assignedVendorId === key) mine[id] = t;
+      else foreign++;
+    });
+
+    CLOSED_RM     = mine;
+    CLOSED_SCOPED = (foreign === 0);   // true once the API does the filtering
+    CLOSED_LOADED = true;
+    CLOSED_AT     = now();
+  }catch(e){
+    CLOSED_ERR = e.message || "Could not load closed jobs";
+    toast(CLOSED_ERR,"err");
+  }finally{
+    CLOSED_LOADING = false;
+    render();
+  }
+}
+function ensureClosedLoaded(){
+  if(!CLOSED_LOADED || (now()-CLOSED_AT)>=CLOSED_TTL) loadClosedRM(false);
+}
+function rmGet(id){ return RM_TICKETS[id] || CLOSED_RM[id] || null; }
+
 async function rmWriteTicket(id, ticket){
   const updates = {}; updates[`maintenanceTickets/${id}`] = ticket;
   const r = await fetch(RM_API,{method:"POST",headers:{"Content-Type":"application/json"},
@@ -423,17 +519,145 @@ function renderStats(){
     else if(t.status==="finished") counts.dup++;
     else if(t.status==="closed") counts.dap++;
   });
+  // Historical. The camera half is exact (Firebase sends every ticket,
+  // archived included). The repair half is only exact once the closed set has
+  // been fetched — until then we show what we know plus a "+" so the number
+  // never silently understates his history.
+  const known = histEntries("").length;
+  const histNum = CLOSED_LOADED ? String(known) : (CLOSED_LOADING ? "…" : known+"+");
+
   const items=[
     {key:"ns",  label:"Not Started",   color:"red"},
     {key:"ip",  label:"In Progress",   color:"yellow"},
     {key:"dup", label:"Done & Unpaid", color:"darkgreen"},
     {key:"dap", label:"Done & Paid",   color:"green"},
+    {key:"hist",label:"Historical",    color:"blue", num:histNum},
   ];
   $("stats").innerHTML = items.map(it=>`
     <div class="stat${curFilter===it.key?" active":""}" onclick="window.toggleFilter('${it.key}')">
-      <div class="stat-num" style="color:var(--${it.color})">${counts[it.key]}</div>
+      <div class="stat-num" style="color:var(--${it.color})">${it.num!=null?esc(it.num):counts[it.key]}</div>
       <div class="stat-label">${esc(it.label)}</div></div>`).join("");
 }
+
+// ── Historical ────────────────────────────────────────────────────────────────
+/* One row per completed JOB, not per location — a store Bill has visited six
+   times over two years yields six rows. Camera tickets are "completed" when
+   archived; repair tickets when finished or closed. */
+/* Camera tickets store createdAt as an ISO string; repair tickets store epoch
+   milliseconds. Both normalise to epoch ms so the two systems interleave
+   correctly in one time-ordered list. */
+function tsOf(v){
+  if(v==null||v==="") return 0;
+  if(typeof v==="number") return isFinite(v)?v:0;
+  const n=Date.parse(v);
+  return isFinite(n)?n:0;
+}
+
+function histEntries(q){
+  const out=[];
+
+  // Camera: every archived ticket, wherever it lives.
+  Object.entries(CAM_DATA).forEach(([lid,locData])=>{
+    if(isSpecial(lid)) return;
+    getSortedTickets(locData).forEach(t=>{
+      if(!t.archived) return;
+      out.push({kind:"cam", lid, tk:t, id:t.id, ts:tsOf(t.createdAt)});
+    });
+  });
+
+  // Repair: finished/closed from the live payload, plus the fetched closed set.
+  const seen={};
+  const pushRm=(id,t)=>{
+    if(!t||seen[id]) return; seen[id]=1;
+    out.push({kind:"rm", id, t, ts:tsOf(t.updatedAt)||tsOf(t.finishedAt)||tsOf(t.createdAt)});
+  };
+  Object.entries(RM_TICKETS).forEach(([id,t])=>{
+    if(t && HIST_RM_STATUSES.includes(t.status)) pushRm(id,t);
+  });
+  Object.entries(CLOSED_RM).forEach(([id,t])=>pushRm(id,t));
+
+  let list=out;
+  if(q){
+    list=list.filter(e=>{
+      if(e.kind==="cam"){
+        return locName(e.lid).toLowerCase().includes(q)||
+               locAddr(e.lid).toLowerCase().includes(q)||
+               (e.tk.issue||"").toLowerCase().includes(q);
+      }
+      return rmStoreName(e.t.storeId).toLowerCase().includes(q)||
+             (e.t.description||"").toLowerCase().includes(q)||
+             (e.t.shortId||"").toLowerCase().includes(q)||
+             (e.t.category||"").toLowerCase().includes(q);
+    });
+  }
+  return list.sort((a,b)=>b.ts-a.ts);
+}
+
+function histDateLabel(e){
+  if(e.kind==="cam") return e.tk.v || (e.ts?new Date(e.ts).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"No date");
+  return e.ts?new Date(e.ts).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"No date";
+}
+
+function mkHistCard(e){
+  if(e.kind==="cam"){
+    const s=e.tk.s||"red", info=CAM_STATUS[s]||{label:s};
+    return `<div class="card" onclick="window.openHistCam('${esc(e.lid)}','${esc(e.id)}')">
+      <div class="src-tag">📷 Camera</div>
+      <div class="card-name">${esc(locName(e.lid))}</div>
+      ${locAddr(e.lid)?`<div class="card-sub">${esc(locAddr(e.lid))}</div>`:""}
+      ${e.tk.issue?`<div class="card-sub">${esc(e.tk.issue.slice(0,60))}${e.tk.issue.length>60?"…":""}</div>`:""}
+      <div class="card-meta">
+        <span class="badge s-${s}">${esc(info.label)}</span>
+        <span class="badge s-hist">📅 ${esc(histDateLabel(e))}</span>
+      </div>
+    </div>`;
+  }
+  const sv=rmStatusView(e.t.status);
+  const cat=e.t.category?e.t.category.charAt(0).toUpperCase()+e.t.category.slice(1):"";
+  const ad=rmStoreAddr(e.t.storeId);
+  return `<div class="card" onclick="window.openHistRM('${esc(e.id)}')">
+    <div class="src-tag">🔧 Repair</div>
+    <div class="card-name">${esc(rmStoreName(e.t.storeId))}${e.t.shortId?` <span style="color:var(--text2);font-weight:400;font-size:11px">#${esc(e.t.shortId)}</span>`:""}</div>
+    ${ad?`<div class="card-sub">${esc(ad)}</div>`:""}
+    ${e.t.description?`<div class="card-sub">${cat?`[${esc(cat)}] `:""}${esc(e.t.description.slice(0,60))}${e.t.description.length>60?"…":""}</div>`:""}
+    <div class="card-meta">
+      <span class="badge s-${sv.cls}">${esc(sv.label)}</span>
+      <span class="badge s-hist">📅 ${esc(histDateLabel(e))}</span>
+    </div>
+  </div>`;
+}
+
+function renderHistorical(q){
+  const list=$("list");
+  const all=histEntries(q);
+  const page=all.slice(0,histShown);
+
+  let head=`<div class="hist-note">📁 Every completed job — camera archive plus finished and closed repair tickets. View only.</div>`;
+  if(CLOSED_LOADING&&!CLOSED_LOADED)
+    head+=`<div class="hist-loading"><span class="spin"></span> Loading closed jobs…</div>`;
+  if(CLOSED_ERR)
+    head+=`<div class="hist-note warn">⚠ ${esc(CLOSED_ERR)} <span style="text-decoration:underline;cursor:pointer" onclick="window.retryClosed()">Retry</span></div>`;
+  if(CLOSED_LOADED&&!CLOSED_SCOPED)
+    head+=`<div class="hist-note">ℹ Closed jobs are filtered in this browser because the API returns all vendors' closed tickets at once. Patching the API to accept <code>?vendor=</code> alongside <code>?closed=only</code> would make this step unnecessary.</div>`;
+
+  if(!all.length){
+    list.innerHTML=head+`<div class="empty">No completed jobs${q?" match this search":""} yet.</div>`;
+    renderMap();
+    return;
+  }
+
+  let html=head+`<div class="section-head">📁 Historical (${all.length})</div>`;
+  html+=`<div class="card-grid">${page.map(mkHistCard).join("")}</div>`;
+  if(all.length>page.length)
+    html+=`<button class="showmore" onclick="window.histMore()">Show ${Math.min(HIST_PAGE,all.length-page.length)} more · ${all.length-page.length} remaining</button>`;
+  list.innerHTML=html;
+
+  $("boardSub").textContent=`${all.length} completed job${all.length===1?"":"s"} on record`;
+  renderMap();
+}
+
+window.histMore=function(){ histShown+=HIST_PAGE; render(); };
+window.retryClosed=function(){ CLOSED_ERR=""; loadClosedRM(true); render(); };
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -459,6 +683,35 @@ function renderMap(){
   if(!MAP) return;
   clearMarkers();
   const pts=[];
+
+  // Historical view: one grey marker per location that has completed work,
+  // deduped (a store with nine past jobs is still one pin).
+  if(curFilter==="hist"){
+    const seenLoc={};
+    histEntries(curSearch.toLowerCase()).forEach(e=>{
+      let lat,lng,key,name,addr,onclick;
+      if(e.kind==="cam"){
+        const l=LOC_MAP[e.lid]; if(!l||typeof l.t!=="number") return;
+        lat=l.t; lng=l.g; key="cam:"+e.lid; name=locName(e.lid); addr=locAddr(e.lid);
+        onclick=`window.openHistCam('${esc(e.lid)}','${esc(e.id)}')`;
+      }else{
+        const r=restOf(e.t.storeId);
+        lat=parseFloat(r.latitude!=null?r.latitude:r.lat);
+        lng=parseFloat(r.longitude!=null?r.longitude:r.lng);
+        if(!isFinite(lat)||!isFinite(lng)) return;
+        key="rm:"+e.t.storeId; name=rmStoreName(e.t.storeId); addr=rmStoreAddr(e.t.storeId);
+        onclick=`window.openHistRM('${esc(e.id)}')`;
+      }
+      if(seenLoc[key]) return; seenLoc[key]=1;
+      const m=L.circleMarker([lat,lng],{radius:7,fillColor:STATUS_HEX.none,fillOpacity:.9,color:"#fff",weight:2}).addTo(MAP);
+      m.bindPopup(`<div class="map-pop-name">📁 ${esc(name)}</div>`+
+        (addr?`<div class="map-pop-addr">${esc(addr)}</div>`:"")+
+        `<button class="map-pop-btn" onclick="${onclick}">Open record</button>`);
+      MARKERS[key]=m; pts.push([lat,lng]);
+    });
+    if(pts.length){ try{ MAP.fitBounds(pts,{padding:[40,40],maxZoom:12}); }catch(e){} }
+    return;
+  }
 
   // Camera locations
   Object.entries(CAM_DATA).forEach(([lid,locData])=>{
@@ -497,6 +750,10 @@ function renderMap(){
 function render(){
   renderStats();
   const q = curSearch.toLowerCase();
+
+  // Historical replaces the whole list — it is a different axis (time) from
+  // the four status tiles, so mixing them in one view reads as a bug.
+  if(curFilter==="hist"){ renderHistorical(q); return; }
 
   // ── Camera section ──
   let camEntries = Object.entries(CAM_DATA)
@@ -591,8 +848,12 @@ function render(){
   renderMap();
 }
 
-window.toggleFilter=function(k){ curFilter=curFilter===k?null:k; render(); };
-window.onSearch=function(v){ curSearch=(v||"").trim(); render(); };
+window.toggleFilter=function(k){
+  curFilter = curFilter===k ? null : k;
+  if(curFilter==="hist"){ histShown=HIST_PAGE; ensureClosedLoaded(); }
+  render();
+};
+window.onSearch=function(v){ curSearch=(v||"").trim(); histShown=HIST_PAGE; render(); };
 window.lightbox=function(u){ $("lightboxImg").src=u; $("lightbox").classList.add("on"); };
 
 // ── Camera detail sheet ───────────────────────────────────────────────────────
@@ -667,6 +928,95 @@ function renderCamSheet(lid){
     </div>`;
 }
 
+
+// ── Historical detail sheets (read-only) ──────────────────────────────────────
+/* Deliberately separate renderers rather than flags on the live ones: the live
+   sheets are built around editable controls, and a read-only mode threaded
+   through them is one forgotten branch away from shipping an editable
+   historical record. */
+
+function histNotesHtml(notes){
+  const list=(notes||[]).map(n=>`
+    <div class="note">
+      <div class="note-meta">${esc(fmtDate(n.t))}</div>
+      ${n.n?`<div class="note-text">${esc(n.n)}</div>`:""}
+      ${n.photoUrl?`<img class="note-img" src="${esc(n.photoUrl)}" onclick="window.lightbox('${esc(n.photoUrl)}')">`:""}
+    </div>`).join("");
+  return list||`<div style="color:var(--text2);font-size:13px">No notes recorded.</div>`;
+}
+
+window.openHistCam=function(lid,tkId){
+  const locData=CAM_DATA[lid]; if(!locData) return;
+  const t=getSortedTickets(locData).find(x=>x.id===tkId); if(!t) return;
+  openItem={type:"histcam",lid,tkId};
+  const s=t.s||"red", info=CAM_STATUS[s]||{label:s};
+  const a2=locAddr(lid), u=mapsUrl(lid);
+  $("sheet").innerHTML=`
+    <div class="sheet-h"><h2>📁 ${esc(locName(lid))}</h2><button class="x" onclick="window.closeModal()">✕ Close</button></div>
+    <div class="sheet-b">
+      <div class="ro-banner">📁 Completed camera job — historical record, view only.</div>
+      <div class="fl" style="margin-top:0">Address</div>
+      <div class="val">${!a2&&!u?"—":(u?`<a href="${u}" target="_blank" rel="noopener" class="addr-link">📍 ${esc(a2||"Open in Maps")}</a>`:esc(a2))}</div>
+      <div class="fl">Status at completion</div>
+      <div><span class="badge s-${s}">${esc(info.label)}</span>
+        <span class="badge s-hist">📅 ${esc(t.v||(t.createdAt?new Date(t.createdAt).toLocaleDateString():"No date"))}</span></div>
+      ${t.issue?`<div class="fl">Issue</div><div class="val">${esc(t.issue)}</div>`:""}
+      <div class="fl">Notes</div>
+      <div class="notes">${histNotesHtml(t.notes)}</div>
+    </div>`;
+  $("modal").classList.add("on"); document.body.style.overflow="hidden";
+};
+
+window.openHistRM=function(id){
+  const t=rmGet(id); if(!t) return;
+  openItem={type:"histrm",id};
+  const sv=rmStatusView(t.status);
+  const cat=t.category?t.category.charAt(0).toUpperCase()+t.category.slice(1):"";
+
+  const photos=Array.isArray(t.photos)?t.photos:[];
+  const photoHtml=photos.length?`<div class="fl">Photos</div><div class="photo-grid">${photos.map(u=>`<img src="${esc(u)}" onclick="window.lightbox('${esc(u)}')">`).join("")}</div>`:"";
+
+  const activity=Array.isArray(t.activity)?t.activity:[];
+  const actHtml=activity.length?activity.slice().reverse().map(a=>`
+    <div class="act-item">
+      <div class="act-meta">${esc(a.by||"")} · ${fmtDate(a.ts)}</div>
+      <div>${esc(a.note||a.action||"")}</div>
+    </div>`).join(""):`<div style="color:var(--text2);font-size:13px">No activity recorded.</div>`;
+
+  // Invoices matter most here — this is the record that proves the work.
+  const comments=Array.isArray(t.comments)?t.comments:[];
+  const cmtHtml=comments.length?comments.map(c=>{
+    const isInv=!!c.invoice;
+    return `<div class="note${isInv?" cmt invoice":""}">
+      <div class="note-meta">${esc(c.by||"")} · ${fmtDate(c.ts)}${isInv?' <span class="invoice-tag">🧾 Invoice</span>':''}</div>
+      ${c.text?`<div class="note-text">${esc(c.text)}</div>`:""}
+      ${c.fileUrl?`<img class="note-img" src="${esc(c.fileUrl)}" onclick="window.lightbox('${esc(c.fileUrl)}')">`:""}
+    </div>`;
+  }).join(""):`<div style="color:var(--text2);font-size:13px">No comments recorded.</div>`;
+
+  const ad=rmStoreAddr(t.storeId), mu=rmMapsUrl(t.storeId), en=rmStoreEntity(t.storeId);
+  $("sheet").innerHTML=`
+    <div class="sheet-h">
+      <h2>📁 ${esc(rmStoreName(t.storeId))}${t.shortId?` · #${esc(t.shortId)}`:""}</h2>
+      <button class="x" onclick="window.closeModal()">✕ Close</button>
+    </div>
+    <div class="sheet-b">
+      <div class="ro-banner">📁 Completed repair job — historical record, view only. Reopening is handled in FixMi.</div>
+      <div class="fl" style="margin-top:0">Address</div>
+      <div class="val">${en?`<div class="entity-tag">${esc(en)}</div><br>`:""}${(ad||mu)?`<a href="${mu}" target="_blank" rel="noopener" class="addr-link">📍 ${esc(ad||"Open in Maps")}</a>`:"—"}</div>
+      <div class="fl">Final status</div>
+      <div><span class="badge s-${sv.cls}">${esc(sv.label)}</span>
+        ${t.updatedAt?`<span class="badge s-hist">📅 ${esc(new Date(t.updatedAt).toLocaleDateString())}</span>`:""}</div>
+      <div class="fl">Job</div>
+      <div class="val">${cat?`[${esc(cat)}] `:""}${esc(t.description||"(no description)")}</div>
+      ${photoHtml}
+      <div class="fl">Activity</div>
+      <div class="activity">${actHtml}</div>
+      <div class="fl">Comments & invoices</div>
+      <div class="notes">${cmtHtml}</div>
+    </div>`;
+  $("modal").classList.add("on"); document.body.style.overflow="hidden";
+};
 
 // ── Repair ticket detail sheet ────────────────────────────────────────────────
 window.openRM=function(id){
@@ -753,8 +1103,14 @@ function renderRMSheet(id){
     </div>`;
 }
 
+/* Historical records are view-only. These guards sit on the functions rather
+   than only hiding the buttons, because every one of these is a global on
+   `window` and therefore reachable from the console. */
+function isLocked(t){ return !!t && t.status==="closed"; }
+
 window.rmSetStatus=async function(id,s){
   const t=RM_TICKETS[id]; if(!t||t.status===s) return;
+  if(isLocked(t)){ toast("Closed job — view only. Reopen it in FixMi.","err"); return; }
   const activity=Array.isArray(t.activity)?t.activity.slice():[];
   activity.push({ts:now(),by:VENDOR_NAME,role:"vendor",action:"status",toStatus:s,note:"via vendor board"});
   const updated={...t,status:s,activity,updatedAt:now()}; delete updated._id;
@@ -771,6 +1127,7 @@ window.rmPostComment=async function(id){
   if(!text&&!photoUrl){toast("Write something or attach a photo","err");return;}
   const btn=$("rmCmtSend"); if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
   const t=RM_TICKETS[id]; if(!t){toast("Ticket not found","err");if(btn){btn.disabled=false;btn.textContent="Post comment";}return;}
+  if(isLocked(t)){toast("Closed job — view only.","err");if(btn){btn.disabled=false;btn.textContent="Post comment";}return;}
   const comments=Array.isArray(t.comments)?t.comments.slice():[];
   const c={id:uid(),by:VENDOR_NAME,role:"vendor",text:text||(isInv?"Invoice":""),ts:now()};
   if(photoUrl) c.fileUrl=photoUrl;
@@ -818,6 +1175,7 @@ window.rmClearPhoto=function(){
 
 window.rmDeleteInvoice=async function(id,commentId){
   const t=RM_TICKETS[id]; if(!t) return;
+  if(isLocked(t)){ toast("Closed job — invoices are locked.","err"); return; }
   const comments=Array.isArray(t.comments)?t.comments:[];
   const target=comments.find(c=>c&&c.id===commentId&&c.invoice);
   if(!target){ toast("Invoice not found","err"); return; }
